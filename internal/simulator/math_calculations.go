@@ -61,5 +61,9 @@ func (s *Simulator) calcLambdaRecombEr() float64 {
 
 // TODO Узнать используем 1 рандомное число или нет
 func CalcTime(lambda float64) float64 {
-	return 1.0 / lambda * math.Log(1.0/rand.Float64()+0.01)
+	randNumber := rand.Float64()
+	if randNumber == 0 {
+		randNumber = 0.0000000000000000001
+	}
+	return 1.0 / lambda * math.Log(1.0/randNumber)
 }
