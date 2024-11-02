@@ -47,8 +47,8 @@ func Fill(temperature float64) SimulationMeta {
 }
 
 func calculateAtomFlux(temperature float64) float64 {
-	v := math.Sqrt((8*1.38*10e-23*temperature)/(math.Pi*internal.Mass)) * 10e+2
-	atomFlux := 0.25 * v * 10e+15
+	v := math.Sqrt((8*1.38*1e-23*temperature)/(math.Pi*internal.Mass)) * 1e+2
+	atomFlux := 0.25 * v * 1e+15
 	return atomFlux
 }
 

@@ -3,7 +3,6 @@ package simulator
 import (
 	"main/internal"
 	"math"
-	"math/rand/v2"
 )
 
 func (s *Simulator) calcProbabilityEr() float64 {
@@ -59,11 +58,6 @@ func (s *Simulator) calcLambdaRecombEr() float64 {
 	return lambdaRememberEr
 }
 
-// TODO Узнать используем 1 рандомное число или нет
-func CalcTime(lambda float64) float64 {
-	randNumber := rand.Float64()
-	if randNumber == 0 {
-		randNumber = 0.0000000000000000001
-	}
-	return 1.0 / lambda * math.Log(1.0/randNumber)
+func CalcTime(lambda float64, randomNumber float64) float64 {
+	return 1.0 / lambda * math.Log(1.0/randomNumber)
 }

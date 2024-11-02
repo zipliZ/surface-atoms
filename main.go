@@ -10,7 +10,7 @@ func main() {
 	var steps int
 	var n int
 
-	fmt.Print("Введите температуру в градусах цельсия: ")
+	fmt.Print("Введите температуру в градусах кельвина: ")
 	fmt.Scanln(&temperature)
 
 	fmt.Print("Введите количество шагов: ")
@@ -19,7 +19,7 @@ func main() {
 	fmt.Print("Введите размер матрицы: ")
 	fmt.Scanln(&n)
 
-	simulator := simulator.NewSimulator(temperature+253, steps, n, n)
+	simulator := simulator.NewSimulator(temperature, steps, n, n)
 	simulator.Simulate()
 
 	// Ожидаем нажатия Enter для выхода

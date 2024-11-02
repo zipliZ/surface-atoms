@@ -29,7 +29,7 @@ func NewSimulator(temperature, simulatingSteps, matrixSizeX, matrixSizeY int) *S
 	meta := Fill(float64(temperature))
 
 	startTime := time.Now().Format("2006-01-02 15_04_05")
-	infoCollector, err := internal.NewInfoCollector(startTime + ".xlsx")
+	infoCollector, err := internal.NewInfoCollector(fmt.Sprintf("result %s T%dK.xlsx", startTime, temperature))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func (s *Simulator) getProcess() (process string, processTime float64, randomize
 
 	randomNumber := rand.Float64()
 
-	spentTime := CalcTime(lambda)
+	spentTime := CalcTime(lambda, randomNumber)
 
 	for _, probability := range probabilityList {
 		if randomNumber <= probability {
@@ -197,5 +197,9 @@ func (s *Simulator) moveRandomAtom(randomNumber float64) {
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
 
 		s.infoCollector.Info.DesorbedAtoms += 2
+	default:
+		s.atomsController.RemoveAtomFromSurface(atom.Id)
+
+		s.infoCollector.Info.DesorbedAtoms++
 	}
 }
