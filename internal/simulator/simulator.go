@@ -201,7 +201,7 @@ func (s *Simulator) moveRandomAtom(randomNumber float64) {
 	switch {
 	case nextCellInfo.IsFree:
 		s.atomsController.MoveAtom(atom, nextCellInfo)
-	case nextCellInfo.Center == 'S' && s.meta.recombinationProbabilityOnFSite >= randomNumber:
+	case nextCellInfo.Center == 'S' && s.meta.recombinationProbabilityOnSSite >= randomNumber:
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
 
