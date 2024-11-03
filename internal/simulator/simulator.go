@@ -5,12 +5,14 @@ import (
 	"log"
 	"log/slog"
 	"main/internal"
+	"main/internal/config"
 	"math/rand"
 	"sort"
 	"time"
 )
 
 type Simulator struct {
+	cfg             config.Config
 	matrix          *internal.Matrix
 	atomsController *internal.SurfaceAtomsController
 	infoCollector   *internal.InfoCollector
@@ -20,13 +22,13 @@ type Simulator struct {
 	meta            SimulationMeta
 }
 
-func NewSimulator(temperature, simulatingSteps, matrixSizeX, matrixSizeY int) *Simulator {
+func NewSimulator(cfg config.Config, temperature, simulatingSteps int) *Simulator {
 	matrix := internal.NewMatrix()
-	matrix.Init(matrixSizeX, matrixSizeY)
+	matrix.Init(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY)
 
-	atomsController := internal.NewSurfaceAtomsController(matrixSizeX, matrixSizeY, matrix)
+	atomsController := internal.NewSurfaceAtomsController(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY, matrix)
 
-	meta := Fill(float64(temperature))
+	meta := Fill(cfg.Constants, float64(temperature))
 
 	startTime := time.Now().Format("2006-01-02 15_04_05")
 	infoCollector, err := internal.NewInfoCollector(fmt.Sprintf("result %s T%dK.xlsx", startTime, temperature))
@@ -35,6 +37,7 @@ func NewSimulator(temperature, simulatingSteps, matrixSizeX, matrixSizeY int) *S
 	}
 
 	return &Simulator{
+		cfg:             cfg,
 		matrix:          matrix,
 		atomsController: atomsController,
 		temperature:     temperature,
@@ -46,12 +49,16 @@ func NewSimulator(temperature, simulatingSteps, matrixSizeX, matrixSizeY int) *S
 
 func (s *Simulator) Simulate() {
 	startTime := time.Now()
+	progressModer := float64(s.simulatingSteps) * 0.1
+	excelWriteModer := float64(s.simulatingSteps) * s.cfg.Simulating.LogPercent / 100
+
 	for step := range s.simulatingSteps + 1 {
 		s.currentStep = step
-		moder := float64(s.simulatingSteps) * 0.1
-		if step%int(moder) == 0 || (step/int(moder)) == 0 && step%int(moder*0.1) == 0 {
-			slog.Info(fmt.Sprintf("Simulated %d%%", step/int(moder*0.1)), "time", time.Since(startTime))
+		if step%int(progressModer) == 0 || (step/int(progressModer)) == 0 && step%int(progressModer*0.1) == 0 {
+			slog.Info(fmt.Sprintf("Simulated %d%%", step/int(progressModer*0.1)), "time", time.Since(startTime))
+		}
 
+		if step%int(excelWriteModer) == 0 {
 			s.infoCollector.Info.Step = step
 			s.infoCollector.Info.AtomsOnSurface = len(s.atomsController.AtomsOnSurface)
 			s.infoCollector.Info.Density = float64(len(s.atomsController.AtomsOnSurface)) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
@@ -125,7 +132,11 @@ func (s *Simulator) getProcess() (process string, processTime float64, randomize
 			return action[probability], spentTime, randomNumber
 		}
 	}
-	return "nothing", 0, randomNumber
+
+	if !s.cfg.Simulating.AllowTimeProgressInIdle {
+		spentTime = 0
+	}
+	return "nothing", spentTime, randomNumber
 }
 
 func (s *Simulator) adsorbAtom(center rune) {
@@ -176,7 +187,10 @@ func (s *Simulator) desorbAtom(center rune) {
 func (s *Simulator) moveRandomAtom(randomNumber float64) {
 	_, atom, exist := s.atomsController.AtomsOnFCenters.Random()
 	if !exist {
-		slog.Info("no atoms to move", "atoms_on_f_centers", s.atomsController.AtomsOnFCenters.Len())
+		slog.Info("no atoms to move",
+			"atoms_on_f_centers", s.atomsController.AtomsOnFCenters.Len(),
+			"atoms_on_s_centers", s.atomsController.AtomsOnSCenters.Len(),
+			"surface_atoms", len(s.atomsController.AtomsOnSurface))
 		return
 	}
 

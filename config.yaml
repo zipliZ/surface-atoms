@@ -1,0 +1,18 @@
+simulating:
+  logPercent: 0.1
+  matrixLenX: 1000
+  matrixLenY: 1000
+  allowTimeProgressInIdle: true
+
+consts:
+  Mass: 2.338e-26
+  Edes: 51000
+  Edif: 25500
+  Vdes: 1e+15
+  Vdif: 1e+13
+  Er: 14000
+  Erlh: 0
+  FDensity: 1.5e+15
+  Fi: 0.002
+  SDensity: 3e+12
+  AgDensity: 1e+15

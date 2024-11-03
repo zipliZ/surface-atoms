@@ -1,7 +1,7 @@
 package simulator
 
 import (
-	"main/internal"
+	"main/internal/config"
 	"math"
 )
 
@@ -18,18 +18,18 @@ type SimulationMeta struct {
 	recombinationProbabilityOnFSite float64
 }
 
-func Fill(temperature float64) SimulationMeta {
-	atomFlux := calculateAtomFlux(temperature)
-	r1 := calcR1(atomFlux)
-	r2 := calcR2(temperature)
-	r3 := calcR3(atomFlux)
-	r4 := calcR4(temperature, r3)
-	r5 := calcR5(temperature)
-	r6 := calcR6(temperature, r5)
-	r7 := calcR7(temperature, r5)
+func Fill(constants config.Constants, temperature float64) SimulationMeta {
+	atomFlux := calculateAtomFlux(constants, temperature)
+	r1 := calcR1(constants, atomFlux)
+	r2 := calcR2(constants, temperature)
+	r3 := calcR3(constants, atomFlux)
+	r4 := calcR4(constants, temperature, r3)
+	r5 := calcR5(constants, temperature)
+	r6 := calcR6(constants, temperature, r5)
+	r7 := calcR7(constants, temperature, r5)
 
-	recombinationProbabilityOnSSite := calcRecombinationProbabilityOnSSite(temperature)
-	recombinationProbabilityOnFSite := calcRecombinationProbabilityOnFSite(temperature)
+	recombinationProbabilityOnSSite := calcRecombinationProbabilityOnSSite(constants, temperature)
+	recombinationProbabilityOnFSite := calcRecombinationProbabilityOnFSite(constants, temperature)
 
 	return SimulationMeta{
 		atomFlux: atomFlux,
@@ -46,58 +46,58 @@ func Fill(temperature float64) SimulationMeta {
 	}
 }
 
-func calculateAtomFlux(temperature float64) float64 {
-	v := math.Sqrt((8*1.38*1e-23*temperature)/(math.Pi*internal.Mass)) * 1e+2
+func calculateAtomFlux(constants config.Constants, temperature float64) float64 {
+	v := math.Sqrt((8*1.38*1e-23*temperature)/(math.Pi*constants.Mass)) * 1e+2
 	atomFlux := 0.25 * v * 1e+15
 	return atomFlux
 }
 
-func calcR1(atomFlux float64) float64 {
-	r1 := atomFlux / (internal.FDensity + internal.SDensity)
+func calcR1(constants config.Constants, atomFlux float64) float64 {
+	r1 := atomFlux / (constants.FDensity + constants.SDensity)
 
 	return r1
 }
 
-func calcR2(temperature float64) float64 {
-	r2 := math.Exp(-(internal.Edes / (8.31 * temperature))) * internal.Vdes
+func calcR2(constants config.Constants, temperature float64) float64 {
+	r2 := math.Exp(-(constants.Edes / (8.31 * temperature))) * constants.Vdes
 
 	return r2
 }
 
-func calcR3(atomFlux float64) float64 {
-	r3 := atomFlux / (internal.FDensity + internal.SDensity)
+func calcR3(constants config.Constants, atomFlux float64) float64 {
+	r3 := atomFlux / (constants.FDensity + constants.SDensity)
 
 	return r3
 }
 
-func calcR4(temperature float64, r3 float64) float64 {
-	r4 := math.Exp(-internal.Er/(8.31*temperature)) * r3
+func calcR4(constants config.Constants, temperature float64, r3 float64) float64 {
+	r4 := math.Exp(-constants.Er/(8.31*temperature)) * r3
 
 	return r4
 }
 
-func calcR5(temperature float64) float64 {
-	r5 := math.Exp(-(internal.Edif / (8.31 * temperature))) * internal.Vdif
+func calcR5(constants config.Constants, temperature float64) float64 {
+	r5 := math.Exp(-(constants.Edif / (8.31 * temperature))) * constants.Vdif
 
 	return r5
 }
 
-func calcR6(temperature float64, r5 float64) float64 {
-	r6 := math.Exp(-internal.Er/(8.31*temperature)) * r5
+func calcR6(constants config.Constants, temperature float64, r5 float64) float64 {
+	r6 := math.Exp(-constants.Er/(8.31*temperature)) * r5
 
 	return r6
 }
 
-func calcR7(temperature float64, r5 float64) float64 {
-	r7 := math.Exp(-internal.Erlh/(8.31*temperature)) * r5
+func calcR7(constants config.Constants, temperature float64, r5 float64) float64 {
+	r7 := math.Exp(-constants.Erlh/(8.31*temperature)) * r5
 
 	return r7
 }
 
-func calcRecombinationProbabilityOnSSite(temperature float64) float64 {
-	return math.Exp(-internal.Er / (8.31 * float64(temperature)))
+func calcRecombinationProbabilityOnSSite(constants config.Constants, temperature float64) float64 {
+	return math.Exp(-constants.Er / (8.31 * float64(temperature)))
 }
 
-func calcRecombinationProbabilityOnFSite(temperature float64) float64 {
-	return math.Exp(-internal.Erlh / (8.31 * float64(temperature)))
+func calcRecombinationProbabilityOnFSite(constants config.Constants, temperature float64) float64 {
+	return math.Exp(-constants.Erlh / (8.31 * float64(temperature)))
 }
