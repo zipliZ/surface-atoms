@@ -127,8 +127,10 @@ func (s *Simulator) getProcess() (process string, processTime float64, randomize
 
 	spentTime := CalcTime(lambda, randomNumber)
 
+	cumulativeProbability := 0.0
 	for _, probability := range probabilityList {
-		if randomNumber <= probability {
+		cumulativeProbability += probability
+		if randomNumber <= cumulativeProbability {
 			return action[probability], spentTime, randomNumber
 		}
 	}
