@@ -6,11 +6,25 @@ import (
 	"github.com/tealeg/xlsx"
 )
 
+// InfoCollector - структура, собирающая информацию о ходе симуляции.
 type InfoCollector struct {
 	fileName string
 	Info     Info
 }
 
+// Info - структура, содержащая информацию о ходе симуляции.
+type Info struct {
+	Step           int
+	ElapsedTime    float64
+	AtomsOnSurface int
+	AdsorbedAtoms  int
+	DesorbedAtoms  int
+	Density        float64
+	DensityF       float64
+	DensityS       float64
+}
+
+// NewInfoCollector - создает новый InfoCollector. При этом создается exel файл, с заполненной шапкой.
 func NewInfoCollector(fileName string) (*InfoCollector, error) {
 	file := xlsx.NewFile()
 	sh, err := file.AddSheet("Лист1")
@@ -45,17 +59,7 @@ func NewInfoCollector(fileName string) (*InfoCollector, error) {
 	}, nil
 }
 
-type Info struct {
-	Step           int
-	ElapsedTime    float64
-	AtomsOnSurface int
-	AdsorbedAtoms  int
-	DesorbedAtoms  int
-	Density        float64
-	DensityF       float64
-	DensityS       float64
-}
-
+// CollectInfo - собирает информацию о ходе симуляции.
 func (i *InfoCollector) CollectInfo() {
 	file, err := xlsx.OpenFile(i.fileName)
 	if err != nil {

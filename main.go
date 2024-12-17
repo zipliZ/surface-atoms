@@ -15,7 +15,6 @@ func main() {
 	defer func() {
 		if r := recover(); r != nil {
 			slog.Error("при работе произошла ошибка", "error", r)
-
 			fmt.Println("Нажмите Enter для выхода...")
 			fmt.Scanln() // Ждет нажатия Enter
 		}
