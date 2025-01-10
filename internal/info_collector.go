@@ -22,6 +22,9 @@ type Info struct {
 	Density        float64
 	DensityF       float64
 	DensityS       float64
+	RecombEr       float64
+	RecombLhF      float64
+	RecombLhS      float64
 }
 
 // NewInfoCollector - создает новый InfoCollector. При этом создается exel файл, с заполненной шапкой.
@@ -41,6 +44,9 @@ func NewInfoCollector(fileName string) (*InfoCollector, error) {
 		"Surface coverage",
 		"Density F",
 		"Density S",
+		"Recomb Er",
+		"Recomb Lh F",
+		"Recomb Lh S",
 	}
 
 	row := sh.AddRow()
@@ -59,8 +65,8 @@ func NewInfoCollector(fileName string) (*InfoCollector, error) {
 	}, nil
 }
 
-// CollectInfo - собирает информацию о ходе симуляции.
-func (i *InfoCollector) CollectInfo() {
+// WriteInfo - собирает информацию о ходе симуляции.
+func (i *InfoCollector) WriteInfo() {
 	file, err := xlsx.OpenFile(i.fileName)
 	if err != nil {
 		log.Fatal(err)
@@ -75,6 +81,9 @@ func (i *InfoCollector) CollectInfo() {
 	row.AddCell().SetFloat(i.Info.Density)
 	row.AddCell().SetFloat(i.Info.DensityF)
 	row.AddCell().SetFloat(i.Info.DensityS)
+	row.AddCell().SetFloat(i.Info.RecombEr)
+	row.AddCell().SetFloat(i.Info.RecombLhF)
+	row.AddCell().SetFloat(i.Info.RecombLhS)
 
 	if err = file.Save(i.fileName); err != nil {
 		log.Fatal(err)

@@ -23,7 +23,7 @@ type Simulator struct {
 }
 
 func NewSimulator(cfg config.Config, temperature, simulatingSteps int) *Simulator {
-	matrix := internal.NewMatrix()
+	matrix := internal.NewMatrix(cfg.Constants)
 	matrix.Init(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY)
 
 	atomsController := internal.NewSurfaceAtomsController(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY, matrix)
@@ -47,6 +47,14 @@ func NewSimulator(cfg config.Config, temperature, simulatingSteps int) *Simulato
 	}
 }
 
+// Simulate - функция, которая моделирует процесс адсорбции, диффузии, рекомбинации и десорбции атомов на поверхности.
+// Она использует алгоритм Монте-Карло, чтобы выбрать процесс, который будет происходить в следующем шаге.
+// Затем она выбирает случайный атом, который будет участвовать в этом процессе.
+// Если процесс - это адсорбция, то атом будет установлен на ячейку, если она свободна.
+// Если процесс - это десорбция, то атом будет удален из ячейки, если он там был.
+// Если процесс - это диффузия, то атом будет перемещен в случайную ячейку, если она свободна.
+// Каждые 10% симуляции будет выводиться информация о ходе симуляции.
+// Кроме того, каждые 10% симуляции будет записываться информация в excel файл.
 func (s *Simulator) Simulate() {
 	startTime := time.Now()
 	progressModer := float64(s.simulatingSteps) * 0.1
@@ -56,15 +64,6 @@ func (s *Simulator) Simulate() {
 		s.currentStep = step
 		if step%int(progressModer) == 0 || (step/int(progressModer)) == 0 && step%int(progressModer*0.1) == 0 {
 			slog.Info(fmt.Sprintf("Simulated %d%%", step/int(progressModer*0.1)), "time", time.Since(startTime))
-		}
-
-		if step%int(excelWriteModer) == 0 {
-			s.infoCollector.Info.Step = step
-			s.infoCollector.Info.AtomsOnSurface = len(s.atomsController.AtomsOnSurface)
-			s.infoCollector.Info.Density = float64(len(s.atomsController.AtomsOnSurface)) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
-			s.infoCollector.Info.DensityF = float64(s.atomsController.AtomsOnFCenters.Len()) / (float64(s.matrix.NumOfFSites))
-			s.infoCollector.Info.DensityS = float64(s.atomsController.AtomsOnSCenters.Len()) / (float64(s.matrix.NumOfSSites))
-			s.infoCollector.CollectInfo()
 		}
 
 		process, spendTime, randomNumber := s.getProcess()
@@ -77,10 +76,23 @@ func (s *Simulator) Simulate() {
 			s.adsorbAtom('F')
 		case recombErProcess:
 			s.desorbAtom('S')
+			s.infoCollector.Info.DesorbedAtoms += 2
+			s.infoCollector.Info.RecombEr += 1
 		case desorptionFProcess:
 			s.desorbAtom('F')
+			s.infoCollector.Info.DesorbedAtoms += 1
 		case diffusionProcess:
-			s.moveRandomAtom(randomNumber)
+			desorbedAtoms := s.moveRandomAtom(randomNumber)
+			s.infoCollector.Info.DesorbedAtoms += desorbedAtoms
+		}
+
+		if step%int(excelWriteModer) == 0 {
+			s.infoCollector.Info.Step = step
+			s.infoCollector.Info.AtomsOnSurface = len(s.atomsController.AtomsOnSurface)
+			s.infoCollector.Info.Density = float64(len(s.atomsController.AtomsOnSurface)) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
+			s.infoCollector.Info.DensityF = float64(s.atomsController.AtomsOnFCenters.Len()) / (float64(s.matrix.NumOfFSites))
+			s.infoCollector.Info.DensityS = float64(s.atomsController.AtomsOnSCenters.Len()) / (float64(s.matrix.NumOfSSites))
+			s.infoCollector.WriteInfo()
 		}
 	}
 }
@@ -182,11 +194,9 @@ func (s *Simulator) desorbAtom(center rune) {
 	}
 
 	s.atomsController.RemoveAtomFromSurface(atom.Id)
-
-	s.infoCollector.Info.DesorbedAtoms++
 }
 
-func (s *Simulator) moveRandomAtom(randomNumber float64) {
+func (s *Simulator) moveRandomAtom(randomNumber float64) (desorbedAtoms int) {
 	_, atom, exist := s.atomsController.AtomsOnFCenters.Random()
 	if !exist {
 		slog.Info("no atoms to move",
@@ -207,15 +217,18 @@ func (s *Simulator) moveRandomAtom(randomNumber float64) {
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
 
-		s.infoCollector.Info.DesorbedAtoms += 2
+		desorbedAtoms = 2
+		s.infoCollector.Info.RecombLhS += 1
 	case nextCellInfo.Center == 'F' && s.meta.recombinationProbabilityOnFSite >= randomNumber:
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
 
-		s.infoCollector.Info.DesorbedAtoms += 2
+		desorbedAtoms = 2
+		s.infoCollector.Info.RecombLhF += 1
 	default:
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 
-		s.infoCollector.Info.DesorbedAtoms++
+		desorbedAtoms = 1
 	}
+	return
 }

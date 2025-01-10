@@ -31,10 +31,6 @@ func NewSurfaceAtomsController(matrixLimitX int, matrixLimitY int, matrix *Matri
 	}
 }
 
-func NewSurfaceAtomsCollector() *SurfaceAtomsController {
-	return &SurfaceAtomsController{AtomsOnSurface: make(map[int]Atom)}
-}
-
 type Atom struct {
 	Id             int
 	X              int

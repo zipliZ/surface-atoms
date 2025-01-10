@@ -2,6 +2,7 @@ package internal
 
 import (
 	"crypto/rand"
+	"main/internal/config"
 	"math/big"
 )
 
@@ -11,6 +12,7 @@ type Matrix struct {
 	FreeCellsOfFCenters *RandMap[int, CellData]
 	FreeCellsOfSCenters *RandMap[int, CellData]
 	cells               [][]CellData
+	consts              config.Constants
 }
 
 // CellData представляет данные об отдельной ячейке в матрице.
@@ -29,11 +31,12 @@ type CellData struct {
 	AtomId int
 }
 
-func NewMatrix() *Matrix {
+func NewMatrix(consts config.Constants) *Matrix {
 	return &Matrix{
 		cells:               [][]CellData{},
 		FreeCellsOfSCenters: NewRandMap[int, CellData](),
 		FreeCellsOfFCenters: NewRandMap[int, CellData](),
+		consts:              consts,
 	}
 }
 
@@ -42,7 +45,7 @@ func NewMatrix() *Matrix {
 func (m *Matrix) Init(x, y int) {
 	m.cells = make([][]CellData, x)
 
-	m.NumOfSSites = int(float64(x) * float64(y) * Fi)
+	m.NumOfSSites = int(float64(x) * float64(y) * m.consts.Fi)
 	m.NumOfFSites = x*y - m.NumOfSSites
 
 	for i := range m.cells {
