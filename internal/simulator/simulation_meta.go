@@ -48,7 +48,7 @@ func Fill(constants config.Constants, temperature float64) SimulationMeta {
 
 func calculateAtomFlux(constants config.Constants, temperature float64) float64 {
 	v := math.Sqrt((8*1.38*1e-23*temperature)/(math.Pi*constants.Mass)) * 1e+2
-	atomFlux := 0.25 * v * 1e+15
+	atomFlux := 0.25 * v * constants.AgDensity
 	return atomFlux
 }
 
