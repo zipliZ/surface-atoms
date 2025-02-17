@@ -6,13 +6,13 @@ import (
 	"github.com/tealeg/xlsx"
 )
 
-// InfoCollector - структура, собирающая информацию о ходе симуляции.
+// InfoCollector - structure that collects information about the simulation progress.
 type InfoCollector struct {
 	fileName string
 	Info     Info
 }
 
-// Info - структура, содержащая информацию о ходе симуляции.
+// Info - structure containing details about the simulation progress.
 type Info struct {
 	Step           int
 	ElapsedTime    float64
@@ -27,10 +27,10 @@ type Info struct {
 	RecombLhS      float64
 }
 
-// NewInfoCollector - создает новый InfoCollector. При этом создается exel файл, с заполненной шапкой.
+// NewInfoCollector creates a new InfoCollector. It also generates an Excel file with a pre-filled header.
 func NewInfoCollector(fileName string) (*InfoCollector, error) {
 	file := xlsx.NewFile()
-	sh, err := file.AddSheet("Лист1")
+	sh, err := file.AddSheet("Sheet1")
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func NewInfoCollector(fileName string) (*InfoCollector, error) {
 		row.AddCell().SetString(header)
 	}
 
-	// сохраняем файл в filePath
+	// Save the file to filePath
 	if err = file.Save(fileName); err != nil {
 		return nil, err
 	}
@@ -65,14 +65,14 @@ func NewInfoCollector(fileName string) (*InfoCollector, error) {
 	}, nil
 }
 
-// WriteInfo - собирает информацию о ходе симуляции.
+// WriteInfo collects information about the simulation progress.
 func (i *InfoCollector) WriteInfo() {
 	file, err := xlsx.OpenFile(i.fileName)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	row := file.Sheet["Лист1"].AddRow()
+	row := file.Sheet["Sheet1"].AddRow()
 	row.AddCell().SetInt(i.Info.Step)
 	row.AddCell().SetFloat(i.Info.ElapsedTime)
 	row.AddCell().SetInt(i.Info.AtomsOnSurface)

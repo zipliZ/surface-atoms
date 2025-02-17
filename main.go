@@ -14,9 +14,9 @@ import (
 func main() {
 	defer func() {
 		if r := recover(); r != nil {
-			slog.Error("при работе произошла ошибка", "error", r)
-			fmt.Println("Нажмите Enter для выхода...")
-			fmt.Scanln() // Ждет нажатия Enter
+			slog.Error("An error occurred during execution", "error", r)
+			fmt.Println("Press Enter to exit...")
+			fmt.Scanln() // Waits for Enter key press
 		}
 	}()
 
@@ -41,10 +41,10 @@ func main() {
 		}
 		slog.SetLogLoggerLevel(slog.LevelError)
 	} else {
-		fmt.Print("Введите температуру в градусах кельвина: ")
+		fmt.Print("Enter the temperature in Kelvin: ")
 		fmt.Scanln(&temperature)
 
-		fmt.Print("Введите количество шагов: ")
+		fmt.Print("Enter the number of steps: ")
 		fmt.Scanln(&steps)
 	}
 
@@ -52,8 +52,8 @@ func main() {
 	simulator.Simulate()
 
 	if len(args) != 3 {
-		// Ожидаем нажатия Enter для выхода
-		fmt.Println("Нажмите Enter для выхода...")
-		fmt.Scanln() // Ждет нажатия Enter
+		// Wait for Enter key press before exiting
+		fmt.Println("Press Enter to exit...")
+		fmt.Scanln() // Waits for Enter key press
 	}
 }

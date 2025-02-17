@@ -47,14 +47,14 @@ func NewSimulator(cfg config.Config, temperature, simulatingSteps int) *Simulato
 	}
 }
 
-// Simulate - функция, которая моделирует процесс адсорбции, диффузии, рекомбинации и десорбции атомов на поверхности.
-// Она использует алгоритм Монте-Карло, чтобы выбрать процесс, который будет происходить в следующем шаге.
-// Затем она выбирает случайный атом, который будет участвовать в этом процессе.
-// Если процесс - это адсорбция, то атом будет установлен на ячейку, если она свободна.
-// Если процесс - это десорбция, то атом будет удален из ячейки, если он там был.
-// Если процесс - это диффузия, то атом будет перемещен в случайную ячейку, если она свободна.
-// Каждые 10% симуляции будет выводиться информация о ходе симуляции.
-// Кроме того, каждые 10% симуляции будет записываться информация в excel файл.
+// Simulate - function that simulates the processes of adsorption, diffusion, recombination, and desorption of atoms on a surface.
+// It uses the Monte Carlo algorithm to determine which process will occur in the next step.
+// Then, it selects a random atom to participate in this process.
+// If the process is adsorption, the atom will be placed in a cell if it is free.
+// If the process is desorption, the atom will be removed from the cell if it was present.
+// If the process is diffusion, the atom will move to a random cell if it is free.
+// Every 10% of the simulation, progress information will be displayed.
+// Additionally, every 10% of the simulation, data will be recorded in an Excel file.
 func (s *Simulator) Simulate() {
 	startTime := time.Now()
 	progressModer := float64(s.simulatingSteps) * 0.1

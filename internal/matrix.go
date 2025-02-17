@@ -15,13 +15,13 @@ type Matrix struct {
 	consts              config.Constants
 }
 
-// CellData представляет данные об отдельной ячейке в матрице.
-// Поля:
-// - Id: уникальный идентификатор ячейки.
-// - X, Y: координаты ячейки в матрице.
-// - Center: тип центра ('S' или 'F'), к которому относится ячейка.
-// - IsFree: флаг, указывающий, свободна ли ячейка.
-// - AtomId: идентификатор атома, находящегося в ячейке (если есть).
+// CellData represents the data of an individual cell in the matrix.
+// Fields:
+// - Id: unique identifier of the cell.
+// - X, Y: coordinates of the cell in the matrix.
+// - Center: type of center ('S' or 'F') the cell belongs to.
+// - IsFree: flag indicating whether the cell is free.
+// - AtomId: identifier of the atom present in the cell (if any).
 type CellData struct {
 	Id     int
 	X      int
@@ -40,8 +40,8 @@ func NewMatrix(consts config.Constants) *Matrix {
 	}
 }
 
-// Init - инициализирует матрицу заданным размером.
-// Заполняет матрицу данными, вычисляет количество S- и F-центров.
+// Init initializes the matrix with the given size.
+// It fills the matrix with data and calculates the number of S- and F-centers.
 func (m *Matrix) Init(x, y int) {
 	m.cells = make([][]CellData, x)
 
@@ -76,8 +76,8 @@ func (m *Matrix) Init(x, y int) {
 	}
 }
 
-// SetAtomOnCell - ставит атом на ячейку (x,y) с id atomId.
-// Если ячейка была свободной, то она перестает быть свободной.
+// SetAtomOnCell places an atom on the cell (x, y) with the given atomId.
+// If the cell was free, it is no longer considered free.
 func (m *Matrix) SetAtomOnCell(x, y int, atomId int) {
 	m.cells[y][x].IsFree = false
 	m.cells[y][x].AtomId = atomId
@@ -90,8 +90,8 @@ func (m *Matrix) SetAtomOnCell(x, y int, atomId int) {
 	}
 }
 
-// ClearCell - очищает ячейку (x,y) - удаляет атом, если он там был.
-// Если ячейка была свободной, то она продолжает быть свободной.
+// ClearCell clears the cell (x, y), removing the atom if present.
+// If the cell was already free, it remains free.
 func (m *Matrix) ClearCell(x, y int) {
 	m.cells[y][x].IsFree = true
 	m.cells[y][x].AtomId = 0
@@ -104,17 +104,17 @@ func (m *Matrix) ClearCell(x, y int) {
 	}
 }
 
-// GetCellInfo - возвращает информацию о ячейке (x,y)
+// GetCellInfo returns information about the cell at (x, y).
 func (m *Matrix) GetCellInfo(x, y int) CellData {
 	return m.cells[y][x]
 }
 
-// CountFreeCellsOfFCenters - возвращает количество свободных F-центров
+// CountFreeCellsOfFCenters returns the number of free F-centers.
 func (m *Matrix) CountFreeCellsOfFCenters() int {
 	return m.FreeCellsOfFCenters.Len()
 }
 
-// CountFreeCellsOFSCenters - возвращает количество свободных S-центров
-func (m *Matrix) CountFreeCellsOFSCenters() int {
+// CountFreeCellsOfSCenters returns the number of free S-centers.
+func (m *Matrix) CountFreeCellsOfSCenters() int {
 	return m.FreeCellsOfSCenters.Len()
 }

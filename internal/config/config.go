@@ -12,7 +12,7 @@ type Config struct {
 }
 
 type Simulating struct {
-	// процент шагов для записи в эксель
+	// Percentage of steps to log into an Excel file
 	LogPercent float64 `json:"logPercent"`
 	MatrixLenX int     `json:"matrixLenX"`
 	MatrixLenY int     `json:"matrixLenY"`
