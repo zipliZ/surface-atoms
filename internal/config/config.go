@@ -16,8 +16,6 @@ type Simulating struct {
 	LogPercent float64 `json:"logPercent"`
 	MatrixLenX int     `json:"matrixLenX"`
 	MatrixLenY int     `json:"matrixLenY"`
-	// Тестовый параметр для проверки увеличения времени симуляции
-	AllowTimeProgressInIdle bool `json:"allowTimeProgressInIdle"`
 }
 
 type Constants struct {

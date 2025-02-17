@@ -147,10 +147,7 @@ func (s *Simulator) getProcess() (process string, processTime float64, randomize
 		}
 	}
 
-	if !s.cfg.Simulating.AllowTimeProgressInIdle {
-		spentTime = 0
-	}
-	return "nothing", spentTime, randomNumber
+	return "nothing", 0, randomNumber
 }
 
 func (s *Simulator) adsorbAtom(center rune) {
