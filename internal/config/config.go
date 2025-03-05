@@ -13,11 +13,18 @@ type Config struct {
 
 type Simulating struct {
 	// Percentage of steps to log into an Excel file
-	LogPercent float64 `json:"logPercent"`
-	MatrixLenX int     `json:"matrixLenX"`
-	MatrixLenY int     `json:"matrixLenY"`
+	LogPercent     float64         `json:"logPercent"`
+	MatrixLenX     int             `json:"matrixLenX"`
+	MatrixLenY     int             `json:"matrixLenY"`
+	GraphicsToPlot []GraphicToPlot `json:"graphicsToPlot"`
+	// number of decimals in Excel
+	FloatPrecision int `json:"floatPrecision"`
 }
 
+type GraphicToPlot struct {
+	XAxis string `json:"xAxis"`
+	YAxis string `json:"yAxis"`
+}
 type Constants struct {
 	Mass      float64 `json:"mass"`
 	Edes      float64 `json:"edes"`

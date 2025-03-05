@@ -3,6 +3,13 @@ simulating:
   matrixLenX: 1000
   matrixLenY: 1000
   allowTimeProgressInIdle: true
+  floatPrecision: 8
+  graphicsToPlot:
+    [
+      { xAxis: "Simulation time", yAxis: "Surface coverage" },
+      { xAxis: "Simulation time", yAxis: "Density F" },
+      { xAxis: "Simulation time", yAxis: "Density S" },
+    ]
 
 consts:
   Mass: 2.338e-26
