@@ -12,7 +12,7 @@ simulating:
     ]
 
 consts:
-  mass: 1
+  mass: 14
   edes: 51000
   edif: 25500
   vdes: 1e+15
