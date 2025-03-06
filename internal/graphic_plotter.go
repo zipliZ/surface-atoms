@@ -50,6 +50,7 @@ func (p *GraphicPlotter) Plot() error {
 	}
 
 	page := components.NewPage()
+	page.PageTitle = "Surface Atoms"
 	page.AddCharts(
 		linesGraphics...,
 	)
@@ -121,10 +122,19 @@ func (p *GraphicPlotter) plotGraph(columnValues map[string][]float64, xName, yNa
 		charts.WithTitleOpts(opts.Title{
 			Title: fmt.Sprintf("%s/%s", yName, xName),
 		}), charts.WithYAxisOpts(opts.YAxis{
-			Name: yName,
+			Name:        yName,
+			Scale:       opts.Bool(true),
+			SplitNumber: 10,
 		}),
 		charts.WithXAxisOpts(opts.XAxis{
-			Name: xName,
+			Name:        xName,
+			SplitNumber: 15,
+		}),
+		charts.WithDataZoomOpts(opts.DataZoom{
+			Type:       "inside",
+			Start:      0,
+			End:        100,
+			XAxisIndex: []int{0},
 		}),
 	)
 
