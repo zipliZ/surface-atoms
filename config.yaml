@@ -12,14 +12,14 @@ simulating:
     ]
 
 consts:
-  Mass: 2.338e-26
-  Edes: 51000
-  Edif: 25500
-  Vdes: 1e+15
-  Vdif: 1e+13
-  Er: 14000
-  Erlh: 0
-  FDensity: 1.5e+15
-  Fi: 0.002
-  SDensity: 3e+12
-  AgDensity: 1e+15
+  mass: 1
+  edes: 51000
+  edif: 25500
+  vdes: 1e+15
+  vdif: 1e+13
+  er: 14000
+  erlh: 0
+  fDensity: 1.5e+15
+  fi: 0.002
+  sDensity: 3e+12
+  agDensity: 1e+15

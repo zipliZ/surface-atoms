@@ -26,6 +26,7 @@ type GraphicToPlot struct {
 	YAxis string `json:"yAxis"`
 }
 type Constants struct {
+	AtomMass  float64 `json:"atomMass"`
 	Mass      float64 `json:"mass"`
 	Edes      float64 `json:"edes"`
 	Edif      float64 `json:"edif"`
