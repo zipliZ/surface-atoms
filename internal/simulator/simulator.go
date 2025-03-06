@@ -7,6 +7,7 @@ import (
 	"main/internal"
 	"main/internal/config"
 	"math/rand"
+	"os"
 	"sort"
 	"time"
 )
@@ -20,6 +21,7 @@ type Simulator struct {
 	simulatingSteps int
 	currentStep     int
 	meta            SimulationMeta
+	graphicPlotter  *internal.GraphicPlotter
 }
 
 func NewSimulator(cfg config.Config, temperature, simulatingSteps int) *Simulator {
@@ -31,10 +33,24 @@ func NewSimulator(cfg config.Config, temperature, simulatingSteps int) *Simulato
 	meta := Fill(cfg.Constants, float64(temperature))
 
 	startTime := time.Now().Format("2006-01-02 15_04_05")
-	infoCollector, err := internal.NewInfoCollector(fmt.Sprintf("result %s T%dK.xlsx", startTime, temperature))
+	dirName := fmt.Sprintf("result %s T%dK", startTime, temperature)
+	err := os.Mkdir(dirName, 0755)
 	if err != nil {
 		log.Fatal(err)
 	}
+	excelFileName := fmt.Sprintf("result_T%dK.xlsx", temperature)
+	infoCollector, err := internal.NewInfoCollector(
+		dirName+string(os.PathSeparator)+excelFileName,
+		cfg.Simulating.FloatPrecision)
+	if err != nil {
+		log.Fatal(err)
+	}
+	graphicsFileName := fmt.Sprintf("graphics_T%dK.html", temperature)
+	graphicPlotter := internal.NewGraphicPlotter(
+		dirName+string(os.PathSeparator)+excelFileName,
+		dirName+string(os.PathSeparator)+graphicsFileName,
+		fmt.Sprintf("T%dK", temperature),
+		cfg.Simulating.GraphicsToPlot)
 
 	return &Simulator{
 		cfg:             cfg,
@@ -43,6 +59,7 @@ func NewSimulator(cfg config.Config, temperature, simulatingSteps int) *Simulato
 		temperature:     temperature,
 		simulatingSteps: simulatingSteps,
 		infoCollector:   infoCollector,
+		graphicPlotter:  graphicPlotter,
 		meta:            meta,
 	}
 }
@@ -60,7 +77,7 @@ func (s *Simulator) Simulate() {
 	progressModer := float64(s.simulatingSteps) * 0.1
 	excelWriteModer := float64(s.simulatingSteps) * s.cfg.Simulating.LogPercent / 100
 
-	for step := range s.simulatingSteps + 1 {
+	for step := 1; step <= s.simulatingSteps; step++ {
 		s.currentStep = step
 		if step%int(progressModer) == 0 || (step/int(progressModer)) == 0 && step%int(progressModer*0.1) == 0 {
 			slog.Info(fmt.Sprintf("Simulated %d%%", step/int(progressModer*0.1)), "time", time.Since(startTime))
@@ -94,6 +111,11 @@ func (s *Simulator) Simulate() {
 			s.infoCollector.Info.DensityS = float64(s.atomsController.AtomsOnSCenters.Len()) / (float64(s.matrix.NumOfSSites))
 			s.infoCollector.WriteInfo()
 		}
+	}
+
+	err := s.graphicPlotter.Plot()
+	if err != nil {
+		slog.Error("plot error", "err", err)
 	}
 }
 

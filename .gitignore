@@ -27,5 +27,6 @@ go.work.sum
 .idea
 
 *.xlsx
+*.html
 
 go.sum
