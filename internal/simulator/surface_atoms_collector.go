@@ -1,24 +1,26 @@
-package internal
+package simulator
 
 import (
 	"crypto/rand"
+	"main/internal/generators"
+	"main/internal/random"
 	"math/big"
 )
 
 type SurfaceAtomsController struct {
 	AtomsOnSurface  map[int]Atom
-	AtomsOnFCenters *RandMap[int, Atom]
-	AtomsOnSCenters *RandMap[int, Atom]
+	AtomsOnFCenters *random.Map[int, Atom]
+	AtomsOnSCenters *random.Map[int, Atom]
 	MatrixLimitX    int
 	MatrixLimitY    int
 	matrix          *Matrix
-	*IdGenerator
+	IdGenerator     *generators.IdGenerator
 }
 
 func NewSurfaceAtomsController(matrixLimitX int, matrixLimitY int, matrix *Matrix) *SurfaceAtomsController {
 	atomsOnSurface := make(map[int]Atom)
-	atomsOnFCenters := NewRandMap[int, Atom]()
-	atomsOnCCenters := NewRandMap[int, Atom]()
+	atomsOnFCenters := random.NewRandMap[int, Atom]()
+	atomsOnCCenters := random.NewRandMap[int, Atom]()
 
 	return &SurfaceAtomsController{
 		AtomsOnSurface:  atomsOnSurface,
@@ -27,7 +29,7 @@ func NewSurfaceAtomsController(matrixLimitX int, matrixLimitY int, matrix *Matri
 		matrix:          matrix,
 		AtomsOnFCenters: atomsOnFCenters,
 		AtomsOnSCenters: atomsOnCCenters,
-		IdGenerator:     NewIdGenerator(),
+		IdGenerator:     generators.NewIdGenerator(),
 	}
 }
 
@@ -45,7 +47,7 @@ func (a *Atom) ChangePosition(x int, y int, center rune) {
 }
 
 func (s *SurfaceAtomsController) AddAtomOnSurface(atom Atom) {
-	atom.Id = s.GetId()
+	atom.Id = s.IdGenerator.Generate()
 	s.AtomsOnSurface[atom.Id] = atom
 
 	switch atom.OccupiedCentre {

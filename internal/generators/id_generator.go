@@ -1,4 +1,4 @@
-package internal
+package generators
 
 // IdGenerator is a unique identifier generator.
 type IdGenerator struct {
@@ -10,8 +10,8 @@ func NewIdGenerator() *IdGenerator {
 	return &IdGenerator{counter: 1}
 }
 
-// GetId returns the current identifier and increments the counter.
-func (i *IdGenerator) GetId() int {
+// Generate returns the current identifier and increments the counter.
+func (i *IdGenerator) Generate() int {
 	id := i.counter
 	i.counter++
 	return id

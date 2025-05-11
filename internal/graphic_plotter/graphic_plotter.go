@@ -1,10 +1,10 @@
-package internal
+package graphic_plotter
 
 import (
 	"fmt"
 	"io"
 	"log/slog"
-	"main/internal/config"
+	"main/configs"
 	"os"
 	"strconv"
 
@@ -19,10 +19,10 @@ type GraphicPlotter struct {
 	ExelFilePath   string
 	OutputFilePath string
 	LineLabel      string
-	GraphicsToPlot []config.GraphicToPlot
+	GraphicsToPlot []configs.GraphicToPlot
 }
 
-func NewGraphicPlotter(exelFilePath string, outputFilePath string, lineLabel string, graphicsToPlot []config.GraphicToPlot) *GraphicPlotter {
+func New(exelFilePath string, outputFilePath string, lineLabel string, graphicsToPlot []configs.GraphicToPlot) *GraphicPlotter {
 	return &GraphicPlotter{
 		ExelFilePath:   exelFilePath,
 		OutputFilePath: outputFilePath,

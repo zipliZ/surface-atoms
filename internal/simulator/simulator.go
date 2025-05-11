@@ -4,31 +4,31 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"main/internal"
-	"main/internal/config"
-	"math/rand"
+	"main/configs"
+	"main/internal/graphic_plotter"
+	"main/internal/random"
 	"os"
 	"sort"
 	"time"
 )
 
 type Simulator struct {
-	cfg             config.Config
-	matrix          *internal.Matrix
-	atomsController *internal.SurfaceAtomsController
-	infoCollector   *internal.InfoCollector
+	cfg             configs.Config
+	matrix          *Matrix
+	atomsController *SurfaceAtomsController
+	infoCollector   *InfoCollector
 	temperature     int
 	simulatingSteps int
 	currentStep     int
 	meta            SimulationMeta
-	graphicPlotter  *internal.GraphicPlotter
+	graphicPlotter  *graphic_plotter.GraphicPlotter
 }
 
-func NewSimulator(cfg config.Config, temperature, simulatingSteps int) *Simulator {
-	matrix := internal.NewMatrix(cfg.Constants)
+func NewSimulator(cfg configs.Config, temperature, simulatingSteps int) *Simulator {
+	matrix := NewMatrix(cfg.Constants)
 	matrix.Init(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY)
 
-	atomsController := internal.NewSurfaceAtomsController(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY, matrix)
+	atomsController := NewSurfaceAtomsController(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY, matrix)
 
 	meta := Fill(cfg.Constants, float64(temperature))
 
@@ -38,15 +38,17 @@ func NewSimulator(cfg config.Config, temperature, simulatingSteps int) *Simulato
 	if err != nil {
 		log.Fatal(err)
 	}
-	excelFileName := fmt.Sprintf("result_T%dK.xlsx", temperature)
-	infoCollector, err := internal.NewInfoCollector(
+
+	excelFileName := fmt.Sprintf("result_%s_T%dK.xlsx", startTime, temperature)
+	infoCollector, err := NewInfoCollector(
 		dirName+string(os.PathSeparator)+excelFileName,
 		cfg.Simulating.FloatPrecision)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	graphicsFileName := fmt.Sprintf("graphics_T%dK.html", temperature)
-	graphicPlotter := internal.NewGraphicPlotter(
+	graphicPlotter := graphic_plotter.New(
 		dirName+string(os.PathSeparator)+excelFileName,
 		dirName+string(os.PathSeparator)+graphicsFileName,
 		fmt.Sprintf("T%dK", temperature),
@@ -83,7 +85,7 @@ func (s *Simulator) Simulate() {
 			slog.Info(fmt.Sprintf("Simulated %d%%", step/int(progressModer*0.1)), "time", time.Since(startTime))
 		}
 
-		process, spendTime, randomNumber := s.getProcess()
+		process, spendTime := s.getProcess()
 		s.infoCollector.Info.ElapsedTime += spendTime
 
 		switch process {
@@ -99,7 +101,7 @@ func (s *Simulator) Simulate() {
 			s.desorbAtom('F')
 			s.infoCollector.Info.DesorbedAtoms += 1
 		case diffusionProcess:
-			desorbedAtoms := s.moveRandomAtom(randomNumber)
+			desorbedAtoms := s.moveRandomAtom()
 			s.infoCollector.Info.DesorbedAtoms += desorbedAtoms
 		}
 
@@ -127,7 +129,7 @@ const (
 	diffusionProcess   = "diffusion"
 )
 
-func (s *Simulator) getProcess() (process string, processTime float64, randomizedNumber float64) {
+func (s *Simulator) getProcess() (process string, processTime float64) {
 	lambdaAdsorptionF := s.calcLambdaAdsorptionF()
 	lambdaAdsorptionS := s.calcLambdaAdsorptionS()
 	lambdaRecombEr := s.calcLambdaRecombEr()
@@ -157,23 +159,23 @@ func (s *Simulator) getProcess() (process string, processTime float64, randomize
 	}
 	sort.Float64s(probabilityList)
 
-	randomNumber := rand.Float64()
+	randomNumber := random.Float64()
 
-	spentTime := CalcTime(lambda, randomNumber)
+	spentTime := CalcTime(lambda)
 
 	cumulativeProbability := 0.0
 	for _, probability := range probabilityList {
 		cumulativeProbability += probability
 		if randomNumber <= cumulativeProbability {
-			return action[probability], spentTime, randomNumber
+			return action[probability], spentTime
 		}
 	}
 
-	return "nothing", 0, randomNumber
+	return "nothing", 0
 }
 
 func (s *Simulator) adsorbAtom(center rune) {
-	var freeCells *internal.RandMap[int, internal.CellData]
+	var freeCells *random.Map[int, CellData]
 
 	switch center {
 	case 'S':
@@ -187,7 +189,7 @@ func (s *Simulator) adsorbAtom(center rune) {
 		slog.Error("no free cells", "cell_id", cellId)
 	}
 
-	atom := internal.Atom{
+	atom := Atom{
 		X:              cellData.X,
 		Y:              cellData.Y,
 		OccupiedCentre: cellData.Center,
@@ -198,7 +200,7 @@ func (s *Simulator) adsorbAtom(center rune) {
 }
 
 func (s *Simulator) desorbAtom(center rune) {
-	var atoms *internal.RandMap[int, internal.Atom]
+	var atoms *random.Map[int, Atom]
 
 	switch center {
 	case 'S':
@@ -215,7 +217,7 @@ func (s *Simulator) desorbAtom(center rune) {
 	s.atomsController.RemoveAtomFromSurface(atom.Id)
 }
 
-func (s *Simulator) moveRandomAtom(randomNumber float64) (desorbedAtoms int) {
+func (s *Simulator) moveRandomAtom() (desorbedAtoms int) {
 	_, atom, exist := s.atomsController.AtomsOnFCenters.Random()
 	if !exist {
 		slog.Info("no atoms to move",
@@ -232,13 +234,13 @@ func (s *Simulator) moveRandomAtom(randomNumber float64) (desorbedAtoms int) {
 	switch {
 	case nextCellInfo.IsFree:
 		s.atomsController.MoveAtom(atom, nextCellInfo)
-	case nextCellInfo.Center == 'S' && s.meta.recombinationProbabilityOnSSite >= randomNumber:
+	case nextCellInfo.Center == 'S' && s.meta.recombinationProbabilityOnSSite >= random.Float64():
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
 
 		desorbedAtoms = 2
 		s.infoCollector.Info.RecombLhS += 1
-	case nextCellInfo.Center == 'F' && s.meta.recombinationProbabilityOnFSite >= randomNumber:
+	case nextCellInfo.Center == 'F' && s.meta.recombinationProbabilityOnFSite >= random.Float64():
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
 

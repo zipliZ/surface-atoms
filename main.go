@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"main/internal/config"
+	"main/configs"
 	"main/internal/simulator"
 	"os"
 	"strconv"
@@ -20,7 +20,7 @@ func main() {
 		}
 	}()
 
-	cfg, err := config.New()
+	cfg, err := configs.New()
 	if err != nil {
 		log.Panic(err)
 	}
@@ -32,7 +32,7 @@ func main() {
 	if len(args) == 3 {
 		temperature, err = strconv.Atoi(args[1])
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(err) // nolint
 		}
 		args[2] = strings.ReplaceAll(args[2], "_", "")
 		steps, err = strconv.Atoi(args[2])

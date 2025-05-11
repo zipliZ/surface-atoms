@@ -1,18 +1,19 @@
-package internal
+package simulator
 
 import (
 	"crypto/rand"
-	"main/internal/config"
+	"main/configs"
+	"main/internal/random"
 	"math/big"
 )
 
 type Matrix struct {
 	NumOfSSites         int
 	NumOfFSites         int
-	FreeCellsOfFCenters *RandMap[int, CellData]
-	FreeCellsOfSCenters *RandMap[int, CellData]
+	FreeCellsOfFCenters *random.Map[int, CellData]
+	FreeCellsOfSCenters *random.Map[int, CellData]
 	cells               [][]CellData
-	consts              config.Constants
+	consts              configs.Constants
 }
 
 // CellData represents the data of an individual cell in the matrix.
@@ -31,11 +32,11 @@ type CellData struct {
 	AtomId int
 }
 
-func NewMatrix(consts config.Constants) *Matrix {
+func NewMatrix(consts configs.Constants) *Matrix {
 	return &Matrix{
 		cells:               [][]CellData{},
-		FreeCellsOfSCenters: NewRandMap[int, CellData](),
-		FreeCellsOfFCenters: NewRandMap[int, CellData](),
+		FreeCellsOfSCenters: random.NewRandMap[int, CellData](),
+		FreeCellsOfFCenters: random.NewRandMap[int, CellData](),
 		consts:              consts,
 	}
 }

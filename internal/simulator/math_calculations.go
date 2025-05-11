@@ -1,6 +1,7 @@
 package simulator
 
 import (
+	"main/internal/random"
 	"math"
 )
 
@@ -66,6 +67,6 @@ func (s *Simulator) calcLambdaRecombEr() float64 {
 }
 
 // CalcTime calculates the physical time.
-func CalcTime(lambda float64, randomNumber float64) float64 {
-	return 1.0 / lambda * math.Log(1.0/randomNumber)
+func CalcTime(lambda float64) float64 {
+	return 1.0 / lambda * math.Log(1.0/random.Float64())
 }
