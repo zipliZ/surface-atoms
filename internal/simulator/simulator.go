@@ -20,7 +20,7 @@ type Simulator struct {
 	temperature     int
 	simulatingSteps int
 	currentStep     int
-	meta            SimulationMeta
+	meta            map[string]SimulationMeta
 	graphicPlotter  *graphic_plotter.GraphicPlotter
 }
 
@@ -28,9 +28,12 @@ func NewSimulator(cfg configs.Config, temperature, simulatingSteps int) *Simulat
 	matrix := NewMatrix(cfg.Constants)
 	matrix.Init(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY)
 
-	atomsController := NewSurfaceAtomsController(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY, matrix)
+	atomsController := NewSurfaceAtomsController(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY, matrix, cfg.Elements)
 
-	meta := Fill(cfg.Constants, float64(temperature))
+	meta := make(map[string]SimulationMeta)
+	for _, element := range cfg.Elements {
+		meta[element.Name] = Fill(element, cfg.Constants, float64(temperature))
+	}
 
 	startTime := time.Now().Format("2006-01-02 15_04_05")
 	dirName := fmt.Sprintf("result %s T%dK", startTime, temperature)
@@ -42,7 +45,8 @@ func NewSimulator(cfg configs.Config, temperature, simulatingSteps int) *Simulat
 	excelFileName := fmt.Sprintf("result_%s_T%dK.xlsx", startTime, temperature)
 	infoCollector, err := NewInfoCollector(
 		dirName+string(os.PathSeparator)+excelFileName,
-		cfg.Simulating.FloatPrecision)
+		cfg.Simulating.FloatPrecision,
+		cfg.Elements)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -85,32 +89,58 @@ func (s *Simulator) Simulate() {
 			slog.Info(fmt.Sprintf("Simulated %d%%", step/int(progressModer*0.1)), "time", time.Since(startTime))
 		}
 
-		process, spendTime := s.getProcess()
-		s.infoCollector.Info.ElapsedTime += spendTime
+		process, elementName, spendTime := s.getProcess()
+		s.infoCollector.ElapsedTime += spendTime
 
+		info := s.infoCollector.Info[elementName]
 		switch process {
 		case adsorptionSProcess:
-			s.adsorbAtom('S')
+			s.adsorbAtom('S', elementName)
+			info.AdsorbedAtoms++
 		case adsorptionFProcess:
-			s.adsorbAtom('F')
+			s.adsorbAtom('F', elementName)
+			info.AdsorbedAtoms++
 		case recombErProcess:
-			s.desorbAtom('S')
-			s.infoCollector.Info.DesorbedAtoms += 2
-			s.infoCollector.Info.RecombEr += 1
+			s.desorbAtom('S', elementName)
+			info.DesorbedAtoms += 2
+			info.RecombEr += 1
 		case desorptionFProcess:
-			s.desorbAtom('F')
-			s.infoCollector.Info.DesorbedAtoms += 1
+			s.desorbAtom('F', elementName)
+			info.DesorbedAtoms += 1
 		case diffusionProcess:
-			desorbedAtoms := s.moveRandomAtom()
-			s.infoCollector.Info.DesorbedAtoms += desorbedAtoms
+			desorbedAtoms := s.moveRandomAtom(elementName, s.meta[elementName])
+			info.DesorbedAtoms += desorbedAtoms
 		}
+		s.infoCollector.Info[elementName] = info
 
 		if step%int(excelWriteModer) == 0 {
-			s.infoCollector.Info.Step = step
-			s.infoCollector.Info.AtomsOnSurface = len(s.atomsController.AtomsOnSurface)
-			s.infoCollector.Info.Density = float64(len(s.atomsController.AtomsOnSurface)) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
-			s.infoCollector.Info.DensityF = float64(s.atomsController.AtomsOnFCenters.Len()) / (float64(s.matrix.NumOfFSites))
-			s.infoCollector.Info.DensityS = float64(s.atomsController.AtomsOnSCenters.Len()) / (float64(s.matrix.NumOfSSites))
+			s.infoCollector.Step = step
+			total := Info{}
+			for elementName = range s.meta {
+				info = s.infoCollector.Info[elementName]
+				info.AtomsOnSurface = s.atomsController.AtomsOnFCenters[elementName].Len() + s.atomsController.AtomsOnSCenters[elementName].Len()
+				info.Density = float64(s.atomsController.AtomsOnFCenters[elementName].Len()+s.atomsController.AtomsOnSCenters[elementName].Len()) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
+				info.DensityF = float64(s.atomsController.AtomsOnFCenters[elementName].Len()) / (float64(s.matrix.NumOfFSites))
+				info.DensityS = float64(s.atomsController.AtomsOnSCenters[elementName].Len()) / (float64(s.matrix.NumOfSSites))
+
+				// TODO Подумать
+				info.DesorbedAtoms = info.AdsorbedAtoms - info.AtomsOnSurface
+
+				s.infoCollector.Info[elementName] = info
+
+				total.AtomsOnSurface += info.AtomsOnSurface
+				total.AdsorbedAtoms += info.AdsorbedAtoms
+				total.DesorbedAtoms += info.DesorbedAtoms
+				total.RecombEr += info.RecombEr
+				total.RecombLhF += info.RecombLhF
+				total.RecombLhS += info.RecombLhS
+			}
+			total.Density = float64(s.atomsController.AtomsOnFCenters[elementName].Len()+s.atomsController.AtomsOnSCenters[elementName].Len()) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
+			total.DensityF = float64(s.atomsController.AtomsOnFCenters[elementName].Len()) / (float64(s.matrix.NumOfFSites))
+			total.DensityS = float64(s.atomsController.AtomsOnSCenters[elementName].Len()) / (float64(s.matrix.NumOfSSites))
+
+			s.infoCollector.TotalInfo = total
+
 			s.infoCollector.WriteInfo()
 		}
 	}
@@ -129,52 +159,65 @@ const (
 	diffusionProcess   = "diffusion"
 )
 
-func (s *Simulator) getProcess() (process string, processTime float64) {
-	lambdaAdsorptionF := s.calcLambdaAdsorptionF()
-	lambdaAdsorptionS := s.calcLambdaAdsorptionS()
-	lambdaRecombEr := s.calcLambdaRecombEr()
-	lambdaDesorptionF := s.calcLambdaDesorptionF()
-	lambdaDiffusions := s.calcLambdaDiffusion()
+func (s *Simulator) getProcess() (process string, elementName string, processTime float64) {
+	// Calculate total lambda for all elements and processes
+	totalLambda := 0.0
+	type processInfo struct {
+		probability float64
+		elementName string
+		process     string
+	}
+	processes := make([]processInfo, 0)
 
-	lambda := lambdaAdsorptionF +
-		lambdaAdsorptionS +
-		lambdaRecombEr +
-		lambdaDesorptionF +
-		lambdaDiffusions
+	for name, meta := range s.meta {
+		lambdaAdsorptionF := s.calcLambdaAdsorptionF(meta)
+		lambdaAdsorptionS := s.calcLambdaAdsorptionS(meta)
+		lambdaRecombEr := s.calcLambdaRecombEr(meta)
+		lambdaDesorptionF := s.calcLambdaDesorptionF(meta)
+		lambdaDiffusions := s.calcLambdaDiffusion(name, meta)
 
-	action := map[float64]string{
-		lambdaAdsorptionF / lambda: adsorptionFProcess,
-		lambdaAdsorptionS / lambda: adsorptionSProcess,
-		lambdaRecombEr / lambda:    recombErProcess,
-		lambdaDesorptionF / lambda: desorptionFProcess,
-		lambdaDiffusions / lambda:  diffusionProcess,
+		// Add all lambdas to total
+		totalLambda += lambdaAdsorptionF +
+			lambdaAdsorptionS +
+			lambdaRecombEr +
+			lambdaDesorptionF +
+			lambdaDiffusions
+
+		// Store all processes with their lambdas
+		processes = append(processes,
+			processInfo{lambdaAdsorptionF, name, adsorptionFProcess},
+			processInfo{lambdaAdsorptionS, name, adsorptionSProcess},
+			processInfo{lambdaRecombEr, name, recombErProcess},
+			processInfo{lambdaDesorptionF, name, desorptionFProcess},
+			processInfo{lambdaDiffusions, name, diffusionProcess},
+		)
 	}
 
-	probabilityList := []float64{
-		lambdaAdsorptionF / lambda,
-		lambdaAdsorptionS / lambda,
-		lambdaRecombEr / lambda,
-		lambdaDesorptionF / lambda,
-		lambdaDiffusions / lambda,
+	// Calculate probabilities relative to total lambda
+	for i := range processes {
+		processes[i].probability = processes[i].probability / totalLambda
 	}
-	sort.Float64s(probabilityList)
+
+	// Sort processes by probability
+	sort.Slice(processes, func(i, j int) bool {
+		return processes[i].probability < processes[j].probability
+	})
 
 	randomNumber := random.Float64()
-
-	spentTime := CalcTime(lambda)
+	spentTime := CalcTime(totalLambda)
 
 	cumulativeProbability := 0.0
-	for _, probability := range probabilityList {
-		cumulativeProbability += probability
+	for _, proc := range processes {
+		cumulativeProbability += proc.probability
 		if randomNumber <= cumulativeProbability {
-			return action[probability], spentTime
+			return proc.process, proc.elementName, spentTime
 		}
 	}
 
-	return "nothing", 0
+	return "nothing", "", 0
 }
 
-func (s *Simulator) adsorbAtom(center rune) {
+func (s *Simulator) adsorbAtom(center rune, elementName string) {
 	var freeCells *random.Map[int, CellData]
 
 	switch center {
@@ -193,20 +236,19 @@ func (s *Simulator) adsorbAtom(center rune) {
 		X:              cellData.X,
 		Y:              cellData.Y,
 		OccupiedCentre: cellData.Center,
+		ElementName:    elementName,
 	}
 	s.atomsController.AddAtomOnSurface(atom)
-
-	s.infoCollector.Info.AdsorbedAtoms++
 }
 
-func (s *Simulator) desorbAtom(center rune) {
+func (s *Simulator) desorbAtom(center rune, elementName string) {
 	var atoms *random.Map[int, Atom]
 
 	switch center {
 	case 'S':
-		atoms = s.atomsController.AtomsOnSCenters
+		atoms = s.atomsController.AtomsOnSCenters[elementName]
 	case 'F':
-		atoms = s.atomsController.AtomsOnFCenters
+		atoms = s.atomsController.AtomsOnFCenters[elementName]
 	}
 
 	cellId, atom, exist := atoms.Random()
@@ -217,12 +259,13 @@ func (s *Simulator) desorbAtom(center rune) {
 	s.atomsController.RemoveAtomFromSurface(atom.Id)
 }
 
-func (s *Simulator) moveRandomAtom() (desorbedAtoms int) {
-	_, atom, exist := s.atomsController.AtomsOnFCenters.Random()
+func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) (desorbedAtoms int) {
+	_, atom, exist := s.atomsController.AtomsOnFCenters[elementName].Random()
 	if !exist {
 		slog.Info("no atoms to move",
-			"atoms_on_f_centers", s.atomsController.AtomsOnFCenters.Len(),
-			"atoms_on_s_centers", s.atomsController.AtomsOnSCenters.Len(),
+			"element_name", elementName,
+			"atoms_on_f_centers", s.atomsController.AtomsOnFCenters[elementName].Len(),
+			"atoms_on_s_centers", s.atomsController.AtomsOnSCenters[elementName].Len(),
 			"surface_atoms", len(s.atomsController.AtomsOnSurface))
 		return
 	}
@@ -231,25 +274,27 @@ func (s *Simulator) moveRandomAtom() (desorbedAtoms int) {
 
 	nextCellInfo := s.matrix.GetCellInfo(nextX, nextY)
 
+	info := s.infoCollector.Info[elementName]
 	switch {
 	case nextCellInfo.IsFree:
 		s.atomsController.MoveAtom(atom, nextCellInfo)
-	case nextCellInfo.Center == 'S' && s.meta.recombinationProbabilityOnSSite >= random.Float64():
+	case nextCellInfo.Center == 'S' && meta.recombinationProbabilityOnSSite >= random.Float64():
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
 
 		desorbedAtoms = 2
-		s.infoCollector.Info.RecombLhS += 1
-	case nextCellInfo.Center == 'F' && s.meta.recombinationProbabilityOnFSite >= random.Float64():
+		info.RecombLhS += 1
+	case nextCellInfo.Center == 'F' && meta.recombinationProbabilityOnFSite >= random.Float64():
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
 
 		desorbedAtoms = 2
-		s.infoCollector.Info.RecombLhF += 1
+		info.RecombLhF += 1
 	default:
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 
 		desorbedAtoms = 1
 	}
+	s.infoCollector.Info[elementName] = info
 	return
 }

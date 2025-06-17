@@ -9,6 +9,7 @@ import (
 type Config struct {
 	Simulating Simulating `json:"simulating"`
 	Constants  Constants  `json:"consts"`
+	Elements   []Element  `json:"elements"`
 }
 
 type Simulating struct {
@@ -21,19 +22,22 @@ type Simulating struct {
 	FloatPrecision int `json:"floatPrecision"`
 }
 
+type Element struct {
+	Name string  `json:"name"`
+	Mass float64 `json:"mass"`
+	Edes float64 `json:"edes"`
+	Edif float64 `json:"edif"`
+	Vdes float64 `json:"vdes"`
+	Vdif float64 `json:"vdif"`
+	Er   float64 `json:"er"`
+	Erlh float64 `json:"erlh"`
+}
+
 type GraphicToPlot struct {
 	XAxis string `json:"xAxis"`
 	YAxis string `json:"yAxis"`
 }
 type Constants struct {
-	AtomMass  float64 `json:"atomMass"`
-	Mass      float64 `json:"mass"`
-	Edes      float64 `json:"edes"`
-	Edif      float64 `json:"edif"`
-	Vdes      float64 `json:"vdes"`
-	Vdif      float64 `json:"vdif"`
-	Er        float64 `json:"er"`
-	Erlh      float64 `json:"erlh"`
 	FDensity  float64 `json:"fDensity"`
 	Fi        float64 `json:"fi"`
 	SDensity  float64 `json:"sDensity"`

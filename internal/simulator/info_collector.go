@@ -1,7 +1,9 @@
 package simulator
 
 import (
+	"fmt"
 	"log"
+	"main/configs"
 	"math"
 
 	"github.com/tealeg/xlsx"
@@ -11,13 +13,14 @@ import (
 type InfoCollector struct {
 	fileName       string
 	floatPrecision int
-	Info           Info
+	Info           map[string]Info
+	TotalInfo      Info
+	Step           int
+	ElapsedTime    float64
 }
 
 // Info - structure containing details about the simulation progress.
 type Info struct {
-	Step           int
-	ElapsedTime    float64
 	AtomsOnSurface int
 	AdsorbedAtoms  int
 	DesorbedAtoms  int
@@ -30,7 +33,7 @@ type Info struct {
 }
 
 // NewInfoCollector creates a new InfoCollector. It also generates an Excel file with a pre-filled header.
-func NewInfoCollector(fileName string, floatPrecision int) (*InfoCollector, error) {
+func NewInfoCollector(fileName string, floatPrecision int, elements []configs.Element) (*InfoCollector, error) {
 	file := xlsx.NewFile()
 	sh, err := file.AddSheet("Sheet1")
 	if err != nil {
@@ -40,6 +43,10 @@ func NewInfoCollector(fileName string, floatPrecision int) (*InfoCollector, erro
 	headers := []string{
 		"Step N",
 		"Simulation time",
+	}
+
+	// Add total info headers
+	headers = append(headers,
 		"Qty atoms on surface",
 		"Qty adsorbed atoms",
 		"Qty desorbed atoms",
@@ -49,6 +56,21 @@ func NewInfoCollector(fileName string, floatPrecision int) (*InfoCollector, erro
 		"Recomb Er",
 		"Recomb Lh F",
 		"Recomb Lh S",
+	)
+
+	// Add element-specific headers
+	for _, element := range elements {
+		headers = append(headers,
+			fmt.Sprintf("%s - Qty atoms on surface", element.Name),
+			fmt.Sprintf("%s - Qty adsorbed atoms", element.Name),
+			fmt.Sprintf("%s - Qty desorbed atoms", element.Name),
+			fmt.Sprintf("%s - Surface coverage", element.Name),
+			fmt.Sprintf("%s - Density F", element.Name),
+			fmt.Sprintf("%s - Density S", element.Name),
+			fmt.Sprintf("%s - Recomb Er", element.Name),
+			fmt.Sprintf("%s - Recomb Lh F", element.Name),
+			fmt.Sprintf("%s - Recomb Lh S", element.Name),
+		)
 	}
 
 	row := sh.AddRow()
@@ -65,10 +87,16 @@ func NewInfoCollector(fileName string, floatPrecision int) (*InfoCollector, erro
 		return nil, err
 	}
 
+	info := make(map[string]Info)
+	for _, element := range elements {
+		info[element.Name] = Info{}
+	}
+
 	return &InfoCollector{
 		fileName:       fileName,
 		floatPrecision: floatPrecision,
-		Info:           Info{},
+		Info:           info,
+		TotalInfo:      Info{},
 	}, nil
 }
 
@@ -80,17 +108,34 @@ func (i *InfoCollector) WriteInfo() {
 	}
 
 	row := file.Sheet["Sheet1"].AddRow()
-	row.AddCell().SetInt(i.Info.Step)
-	row.AddCell().SetFloat(roundToDecimals(i.Info.ElapsedTime, i.floatPrecision))
-	row.AddCell().SetInt(i.Info.AtomsOnSurface)
-	row.AddCell().SetInt(i.Info.AdsorbedAtoms)
-	row.AddCell().SetInt(i.Info.DesorbedAtoms)
-	row.AddCell().SetFloat(roundToDecimals(i.Info.Density, i.floatPrecision))
-	row.AddCell().SetFloat(roundToDecimals(i.Info.DensityF, i.floatPrecision))
-	row.AddCell().SetFloat(roundToDecimals(i.Info.DensityS, i.floatPrecision))
-	row.AddCell().SetFloat(roundToDecimals(i.Info.RecombEr, i.floatPrecision))
-	row.AddCell().SetFloat(roundToDecimals(i.Info.RecombLhF, i.floatPrecision))
-	row.AddCell().SetFloat(roundToDecimals(i.Info.RecombLhS, i.floatPrecision))
+
+	// Write common info (step and time)
+	row.AddCell().SetInt(i.Step)
+	row.AddCell().SetFloat(roundToDecimals(i.ElapsedTime, i.floatPrecision))
+
+	// Write total info
+	row.AddCell().SetInt(i.TotalInfo.AtomsOnSurface)
+	row.AddCell().SetInt(i.TotalInfo.AdsorbedAtoms)
+	row.AddCell().SetInt(i.TotalInfo.DesorbedAtoms)
+	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.Density, i.floatPrecision))
+	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.DensityF, i.floatPrecision))
+	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.DensityS, i.floatPrecision))
+	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombEr, i.floatPrecision))
+	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombLhF, i.floatPrecision))
+	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombLhS, i.floatPrecision))
+
+	// Write element-specific info
+	for _, info := range i.Info {
+		row.AddCell().SetInt(info.AtomsOnSurface)
+		row.AddCell().SetInt(info.AdsorbedAtoms)
+		row.AddCell().SetInt(info.DesorbedAtoms)
+		row.AddCell().SetFloat(roundToDecimals(info.Density, i.floatPrecision))
+		row.AddCell().SetFloat(roundToDecimals(info.DensityF, i.floatPrecision))
+		row.AddCell().SetFloat(roundToDecimals(info.DensityS, i.floatPrecision))
+		row.AddCell().SetFloat(roundToDecimals(info.RecombEr, i.floatPrecision))
+		row.AddCell().SetFloat(roundToDecimals(info.RecombLhF, i.floatPrecision))
+		row.AddCell().SetFloat(roundToDecimals(info.RecombLhS, i.floatPrecision))
+	}
 
 	if err = file.Save(i.fileName); err != nil {
 		log.Fatal(err)

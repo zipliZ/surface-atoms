@@ -2,6 +2,7 @@ package simulator
 
 import (
 	"crypto/rand"
+	"main/configs"
 	"main/internal/generators"
 	"main/internal/random"
 	"math/big"
@@ -9,18 +10,22 @@ import (
 
 type SurfaceAtomsController struct {
 	AtomsOnSurface  map[int]Atom
-	AtomsOnFCenters *random.Map[int, Atom]
-	AtomsOnSCenters *random.Map[int, Atom]
+	AtomsOnFCenters AtomsOnCenters
+	AtomsOnSCenters AtomsOnCenters
 	MatrixLimitX    int
 	MatrixLimitY    int
 	matrix          *Matrix
 	IdGenerator     *generators.IdGenerator
 }
 
-func NewSurfaceAtomsController(matrixLimitX int, matrixLimitY int, matrix *Matrix) *SurfaceAtomsController {
+func NewSurfaceAtomsController(matrixLimitX int, matrixLimitY int, matrix *Matrix, elements []configs.Element) *SurfaceAtomsController {
 	atomsOnSurface := make(map[int]Atom)
-	atomsOnFCenters := random.NewRandMap[int, Atom]()
-	atomsOnCCenters := random.NewRandMap[int, Atom]()
+	atomsOnFCenters := make(map[string]*random.Map[int, Atom])
+	atomsOnSCenters := make(map[string]*random.Map[int, Atom])
+	for _, element := range elements {
+		atomsOnFCenters[element.Name] = random.NewRandMap[int, Atom]()
+		atomsOnSCenters[element.Name] = random.NewRandMap[int, Atom]()
+	}
 
 	return &SurfaceAtomsController{
 		AtomsOnSurface:  atomsOnSurface,
@@ -28,9 +33,19 @@ func NewSurfaceAtomsController(matrixLimitX int, matrixLimitY int, matrix *Matri
 		MatrixLimitY:    matrixLimitY,
 		matrix:          matrix,
 		AtomsOnFCenters: atomsOnFCenters,
-		AtomsOnSCenters: atomsOnCCenters,
+		AtomsOnSCenters: atomsOnSCenters,
 		IdGenerator:     generators.NewIdGenerator(),
 	}
+}
+
+type AtomsOnCenters map[string]*random.Map[int, Atom]
+
+func (a AtomsOnCenters) Len() int {
+	total := 0
+	for _, atoms := range a {
+		total += atoms.Len()
+	}
+	return total
 }
 
 type Atom struct {
@@ -38,6 +53,7 @@ type Atom struct {
 	X              int
 	Y              int
 	OccupiedCentre rune
+	ElementName    string
 }
 
 func (a *Atom) ChangePosition(x int, y int, center rune) {
@@ -52,9 +68,9 @@ func (s *SurfaceAtomsController) AddAtomOnSurface(atom Atom) {
 
 	switch atom.OccupiedCentre {
 	case 'F':
-		s.AtomsOnFCenters.Add(atom.Id, atom)
+		s.AtomsOnFCenters[atom.ElementName].Add(atom.Id, atom)
 	case 'S':
-		s.AtomsOnSCenters.Add(atom.Id, atom)
+		s.AtomsOnSCenters[atom.ElementName].Add(atom.Id, atom)
 	}
 
 	s.matrix.SetAtomOnCell(atom.X, atom.Y, atom.Id)
@@ -94,9 +110,9 @@ func (s *SurfaceAtomsController) RemoveAtomFromSurface(atomId int) {
 
 	switch atom.OccupiedCentre {
 	case 'F':
-		s.AtomsOnFCenters.Remove(atomId)
+		s.AtomsOnFCenters[atom.ElementName].Remove(atomId)
 	case 'S':
-		s.AtomsOnSCenters.Remove(atomId)
+		s.AtomsOnSCenters[atom.ElementName].Remove(atomId)
 	}
 
 	delete(s.AtomsOnSurface, atomId)
@@ -106,9 +122,9 @@ func (s *SurfaceAtomsController) RemoveAtomFromSurface(atomId int) {
 func (s *SurfaceAtomsController) MoveAtom(atom Atom, nextCell CellData) {
 	switch atom.OccupiedCentre {
 	case 'F':
-		s.AtomsOnFCenters.Remove(atom.Id)
+		s.AtomsOnFCenters[atom.ElementName].Remove(atom.Id)
 	case 'S':
-		s.AtomsOnSCenters.Remove(atom.Id)
+		s.AtomsOnSCenters[atom.ElementName].Remove(atom.Id)
 	}
 
 	s.matrix.ClearCell(atom.X, atom.Y)
@@ -118,8 +134,8 @@ func (s *SurfaceAtomsController) MoveAtom(atom Atom, nextCell CellData) {
 
 	switch nextCell.Center {
 	case 'F':
-		s.AtomsOnFCenters.Add(atom.Id, atom)
+		s.AtomsOnFCenters[atom.ElementName].Add(atom.Id, atom)
 	case 'S':
-		s.AtomsOnSCenters.Add(atom.Id, atom)
+		s.AtomsOnSCenters[atom.ElementName].Add(atom.Id, atom)
 	}
 }

@@ -6,62 +6,62 @@ import (
 )
 
 // calcProbabilityEr calculates the probability of recombination at the S-center.
-func (s *Simulator) calcProbabilityEr() float64 {
+func (s *Simulator) calcProbabilityEr(meta SimulationMeta) float64 {
 	sigmaS := float64(s.atomsController.AtomsOnSCenters.Len()) / float64(s.matrix.NumOfSSites)
-	probabilityEr := 2.0 * sigmaS * s.meta.r4 / s.meta.atomFlux * s.cfg.Constants.SDensity
+	probabilityEr := 2.0 * sigmaS * meta.r4 / meta.atomFlux * s.cfg.Constants.SDensity
 
 	return probabilityEr
 }
 
 // calcProbabilitySLh calculates the probability of recombination at both the S-center and F-center.
-func (s *Simulator) calcProbabilitySLh() float64 {
+func (s *Simulator) calcProbabilitySLh(meta SimulationMeta) float64 {
 	sigmaS := float64(s.atomsController.AtomsOnSCenters.Len()) / float64(s.matrix.NumOfSSites)
 	sigmaF := float64(s.atomsController.AtomsOnFCenters.Len()) / float64(s.matrix.NumOfFSites)
 
-	probabilitySLh := 2.0 * sigmaS * sigmaF * s.meta.r6 * s.cfg.Constants.SDensity / s.meta.atomFlux
+	probabilitySLh := 2.0 * sigmaS * sigmaF * meta.r6 * s.cfg.Constants.SDensity / meta.atomFlux
 
 	return probabilitySLh
 }
 
 // calcProbabilityFLh calculates the probability of recombination at the F-center.
-func (s *Simulator) calcProbabilityFLh() float64 {
+func (s *Simulator) calcProbabilityFLh(meta SimulationMeta) float64 {
 	sigmaF := float64(s.atomsController.AtomsOnFCenters.Len()) / float64(s.matrix.NumOfFSites)
 
-	probabilityFLh := 2.0 * sigmaF * s.meta.r7 * s.cfg.Constants.FDensity / s.meta.atomFlux
+	probabilityFLh := 2.0 * sigmaF * meta.r7 * s.cfg.Constants.FDensity / meta.atomFlux
 
 	return probabilityFLh
 }
 
 // calcLambdaAdsorptionF calculates the adsorption rate at the F-center.
-func (s *Simulator) calcLambdaAdsorptionF() float64 {
-	lambdaAdsorptions := float64(s.matrix.CountFreeCellsOfFCenters()) * s.meta.atomFlux / (s.cfg.Constants.FDensity + s.cfg.Constants.SDensity)
+func (s *Simulator) calcLambdaAdsorptionF(meta SimulationMeta) float64 {
+	lambdaAdsorptions := float64(s.matrix.CountFreeCellsOfFCenters()) * meta.atomFlux / (s.cfg.Constants.FDensity + s.cfg.Constants.SDensity)
 
 	return lambdaAdsorptions
 }
 
 // calcLambdaAdsorptionS calculates the adsorption rate at the S-center.
-func (s *Simulator) calcLambdaAdsorptionS() float64 {
-	lambdaAdsorptions := float64(s.matrix.CountFreeCellsOfSCenters()) * s.meta.atomFlux / (s.cfg.Constants.FDensity + s.cfg.Constants.SDensity)
+func (s *Simulator) calcLambdaAdsorptionS(meta SimulationMeta) float64 {
+	lambdaAdsorptions := float64(s.matrix.CountFreeCellsOfSCenters()) * meta.atomFlux / (s.cfg.Constants.FDensity + s.cfg.Constants.SDensity)
 
 	return lambdaAdsorptions
 }
 
 // calcLambdaDesorptionF calculates the desorption rate at the F-center.
-func (s *Simulator) calcLambdaDesorptionF() float64 {
-	lambdaDesorption := float64(s.atomsController.AtomsOnFCenters.Len()) * s.meta.r2
+func (s *Simulator) calcLambdaDesorptionF(meta SimulationMeta) float64 {
+	lambdaDesorption := float64(s.atomsController.AtomsOnFCenters.Len()) * meta.r2
 
 	return lambdaDesorption
 }
 
 // calcLambdaDiffusion calculates the diffusion rate at the F-center.
-func (s *Simulator) calcLambdaDiffusion() float64 {
-	lambdaDiffusion := float64(s.atomsController.AtomsOnFCenters.Len()) * s.meta.r5
+func (s *Simulator) calcLambdaDiffusion(element string, meta SimulationMeta) float64 {
+	lambdaDiffusion := float64(s.atomsController.AtomsOnFCenters[element].Len()) * meta.r5
 	return lambdaDiffusion
 }
 
 // calcLambdaRecombEr calculates the recombination rate at the S-center.
-func (s *Simulator) calcLambdaRecombEr() float64 {
-	lambdaRecombEr := float64(s.atomsController.AtomsOnSCenters.Len()) * s.meta.r4
+func (s *Simulator) calcLambdaRecombEr(meta SimulationMeta) float64 {
+	lambdaRecombEr := float64(s.atomsController.AtomsOnSCenters.Len()) * meta.r4
 
 	return lambdaRecombEr
 }

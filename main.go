@@ -7,6 +7,7 @@ import (
 	"main/configs"
 	"main/internal/simulator"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 )
@@ -15,6 +16,7 @@ func main() {
 	defer func() {
 		if r := recover(); r != nil {
 			slog.Error("An error occurred during execution", "error", r)
+			fmt.Println(string(debug.Stack()))
 			fmt.Println("Press Enter to exit...")
 			fmt.Scanln() // Waits for Enter key press
 		}
