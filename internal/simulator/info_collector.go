@@ -14,6 +14,7 @@ type InfoCollector struct {
 	fileName       string
 	floatPrecision int
 	Info           map[string]Info
+	elementOrder   []string
 	TotalInfo      Info
 	Step           int
 	ElapsedTime    float64
@@ -58,7 +59,7 @@ func NewInfoCollector(fileName string, floatPrecision int, elements []configs.El
 		"Recomb Lh S",
 	)
 
-	// Add element-specific headers
+	elementOrder := make([]string, 0, len(elements))
 	for _, element := range elements {
 		headers = append(headers,
 			fmt.Sprintf("%s - Qty atoms on surface", element.Name),
@@ -71,6 +72,7 @@ func NewInfoCollector(fileName string, floatPrecision int, elements []configs.El
 			fmt.Sprintf("%s - Recomb Lh F", element.Name),
 			fmt.Sprintf("%s - Recomb Lh S", element.Name),
 		)
+		elementOrder = append(elementOrder, element.Name)
 	}
 
 	row := sh.AddRow()
@@ -97,6 +99,7 @@ func NewInfoCollector(fileName string, floatPrecision int, elements []configs.El
 		floatPrecision: floatPrecision,
 		Info:           info,
 		TotalInfo:      Info{},
+		elementOrder:   elementOrder,
 	}, nil
 }
 
@@ -125,7 +128,8 @@ func (i *InfoCollector) WriteInfo() {
 	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombLhS, i.floatPrecision))
 
 	// Write element-specific info
-	for _, info := range i.Info {
+	for _, element := range i.elementOrder {
+		info := i.Info[element]
 		row.AddCell().SetInt(info.AtomsOnSurface)
 		row.AddCell().SetInt(info.AdsorbedAtoms)
 		row.AddCell().SetInt(info.DesorbedAtoms)

@@ -47,8 +47,8 @@ func (s *Simulator) calcLambdaAdsorptionS(meta SimulationMeta) float64 {
 }
 
 // calcLambdaDesorptionF calculates the desorption rate at the F-center.
-func (s *Simulator) calcLambdaDesorptionF(meta SimulationMeta) float64 {
-	lambdaDesorption := float64(s.atomsController.AtomsOnFCenters.Len()) * meta.r2
+func (s *Simulator) calcLambdaDesorptionF(element string, meta SimulationMeta) float64 {
+	lambdaDesorption := float64(s.atomsController.AtomsOnFCenters[element].Len()) * meta.r2
 
 	return lambdaDesorption
 }
@@ -60,8 +60,8 @@ func (s *Simulator) calcLambdaDiffusion(element string, meta SimulationMeta) flo
 }
 
 // calcLambdaRecombEr calculates the recombination rate at the S-center.
-func (s *Simulator) calcLambdaRecombEr(meta SimulationMeta) float64 {
-	lambdaRecombEr := float64(s.atomsController.AtomsOnSCenters.Len()) * meta.r4
+func (s *Simulator) calcLambdaRecombEr(element string, meta SimulationMeta) float64 {
+	lambdaRecombEr := float64(s.atomsController.AtomsOnSCenters[element].Len()) * meta.r4
 
 	return lambdaRecombEr
 }

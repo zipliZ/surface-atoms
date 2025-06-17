@@ -23,14 +23,15 @@ type Simulating struct {
 }
 
 type Element struct {
-	Name string  `json:"name"`
-	Mass float64 `json:"mass"`
-	Edes float64 `json:"edes"`
-	Edif float64 `json:"edif"`
-	Vdes float64 `json:"vdes"`
-	Vdif float64 `json:"vdif"`
-	Er   float64 `json:"er"`
-	Erlh float64 `json:"erlh"`
+	Name      string  `json:"name"`
+	Mass      float64 `json:"mass"`
+	Edes      float64 `json:"edes"`
+	Edif      float64 `json:"edif"`
+	Vdes      float64 `json:"vdes"`
+	Vdif      float64 `json:"vdif"`
+	Er        float64 `json:"er"`
+	Erlh      float64 `json:"erlh"`
+	AgDensity float64 `json:"agDensity"`
 }
 
 type GraphicToPlot struct {
@@ -38,10 +39,9 @@ type GraphicToPlot struct {
 	YAxis string `json:"yAxis"`
 }
 type Constants struct {
-	FDensity  float64 `json:"fDensity"`
-	Fi        float64 `json:"fi"`
-	SDensity  float64 `json:"sDensity"`
-	AgDensity float64 `json:"agDensity"`
+	FDensity float64 `json:"fDensity"`
+	Fi       float64 `json:"fi"`
+	SDensity float64 `json:"sDensity"`
 }
 
 func New() (Config, error) {

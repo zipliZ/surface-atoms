@@ -19,7 +19,7 @@ type SimulationMeta struct {
 }
 
 func Fill(element configs.Element, constants configs.Constants, temperature float64) SimulationMeta {
-	atomFlux := calculateAtomFlux(element, constants, temperature)
+	atomFlux := calculateAtomFlux(element, temperature)
 	r1 := calcR1(constants, atomFlux)
 	r2 := calcR2(element, temperature)
 	r3 := calcR3(constants, atomFlux)
@@ -46,11 +46,11 @@ func Fill(element configs.Element, constants configs.Constants, temperature floa
 	}
 }
 
-func calculateAtomFlux(element configs.Element, constants configs.Constants, temperature float64) float64 {
+func calculateAtomFlux(element configs.Element, temperature float64) float64 {
 	const atomMass = 1.66035e-27
 
 	v := math.Sqrt((8*1.38*1e-23*temperature)/(math.Pi*element.Mass*atomMass)) * 1e+2
-	atomFlux := 0.25 * v * constants.AgDensity
+	atomFlux := 0.25 * v * element.AgDensity
 	return atomFlux
 }
 
