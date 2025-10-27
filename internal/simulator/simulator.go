@@ -55,7 +55,7 @@ func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) *
 		log.Fatal(err)
 	}
 
-	graphicsFileName := fmt.Sprintf("graphics_T%dK.html", temperature)
+	graphicsFileName := fmt.Sprintf("result_%s_T%dK.html", startTime, temperature)
 	graphicPlotter := graphic_plotter.New(
 		dirName+string(os.PathSeparator)+excelFileName,
 		dirName+string(os.PathSeparator)+graphicsFileName,
