@@ -6,33 +6,37 @@ import (
 	"log/slog"
 	"main/configs"
 	"main/internal/graphic_plotter"
-	"main/internal/random"
+	randomx "main/internal/random"
+	"math/rand/v2"
 	"os"
 	"sort"
 	"time"
 )
 
 type Simulator struct {
-	cfg             configs.Config
-	matrix          *Matrix
-	atomsController *SurfaceAtomsController
-	infoCollector   *InfoCollector
-	temperature     int
-	simulatingSteps int
-	currentStep     int
-	meta            map[string]SimulationMeta
-	graphicPlotter  *graphic_plotter.GraphicPlotter
+	cfg                   configs.Config
+	matrix                *Matrix
+	atomsController       *SurfaceAtomsController
+	infoCollector         *InfoCollector
+	temperature           int
+	simulationTime        float64
+	currentSimulationTime float64
+	meta                  map[string]SimulationMeta
+	elems                 []string
+	graphicPlotter        *graphic_plotter.GraphicPlotter
 }
 
-func NewSimulator(cfg configs.Config, temperature, simulatingSteps int) *Simulator {
+func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) *Simulator {
 	matrix := NewMatrix(cfg.Constants)
 	matrix.Init(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY)
 
 	atomsController := NewSurfaceAtomsController(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY, matrix, cfg.Elements)
 
 	meta := make(map[string]SimulationMeta)
+	elems := make([]string, 0, len(cfg.Elements))
 	for _, element := range cfg.Elements {
 		meta[element.Name] = Fill(element, cfg.Constants, float64(temperature))
+		elems = append(elems, element.Name)
 	}
 
 	startTime := time.Now().Format("2006-01-02 15_04_05")
@@ -63,33 +67,48 @@ func NewSimulator(cfg configs.Config, temperature, simulatingSteps int) *Simulat
 		matrix:          matrix,
 		atomsController: atomsController,
 		temperature:     temperature,
-		simulatingSteps: simulatingSteps,
+		simulationTime:  simulationTime,
 		infoCollector:   infoCollector,
 		graphicPlotter:  graphicPlotter,
 		meta:            meta,
+		elems:           elems,
 	}
 }
 
 // Simulate - function that simulates the processes of adsorption, diffusion, recombination, and desorption of atoms on a surface.
 // It uses the Monte Carlo algorithm to determine which process will occur in the next step.
-// Then, it selects a random atom to participate in this process.
+// Then, it selects a randomx atom to participate in this process.
 // If the process is adsorption, the atom will be placed in a cell if it is free.
 // If the process is desorption, the atom will be removed from the cell if it was present.
-// If the process is diffusion, the atom will move to a random cell if it is free.
+// If the process is diffusion, the atom will move to a randomx cell if it is free.
 // Every 10% of the simulation, progress information will be displayed.
 // Additionally, every 10% of the simulation, data will be recorded in an Excel file.
 func (s *Simulator) Simulate() {
 	startTime := time.Now()
-	progressModer := float64(s.simulatingSteps) * 0.1
-	excelWriteModer := float64(s.simulatingSteps) * s.cfg.Simulating.LogPercent / 100
 
-	for step := 1; step <= s.simulatingSteps; step++ {
-		s.currentStep = step
-		if step%int(progressModer) == 0 || (step/int(progressModer)) == 0 && step%int(progressModer*0.1) == 0 {
-			slog.Info(fmt.Sprintf("Simulated %d%%", step/int(progressModer*0.1)), "time", time.Since(startTime))
+	progressInterval := s.simulationTime * 0.1
+	excelWriteInterval := s.simulationTime * s.cfg.Simulating.LogPercent / 100
+
+	nextProgressTime := progressInterval
+	nextExcelWriteTime := excelWriteInterval
+
+	progressCount := 1
+
+	totalIterations := 0
+	defer func() {
+		fmt.Println("Total iterations:", totalIterations)
+	}()
+	for s.currentSimulationTime <= s.simulationTime {
+		totalIterations++
+		if s.currentSimulationTime >= nextProgressTime && progressCount <= 10 {
+			currentPercent := progressCount * 10
+			slog.Info(fmt.Sprintf("Simulated %d%%", currentPercent), "physical time", s.currentSimulationTime, "time", time.Since(startTime))
+			nextProgressTime += progressInterval
+			progressCount++
 		}
 
 		process, elementName, spendTime := s.getProcess()
+		s.currentSimulationTime += spendTime
 		s.infoCollector.ElapsedTime += spendTime
 
 		switch process {
@@ -105,9 +124,10 @@ func (s *Simulator) Simulate() {
 			s.moveRandomAtom(elementName, s.meta[elementName])
 		}
 
-		if step%int(excelWriteModer) == 0 {
-			s.infoCollector.Step = step
+		if s.currentSimulationTime >= nextExcelWriteTime {
+			s.infoCollector.ElapsedTime = s.currentSimulationTime
 			total := Info{}
+
 			for elementName = range s.meta {
 				info := s.infoCollector.Info[elementName]
 				info.AtomsOnSurface = s.atomsController.AtomsOnFCenters[elementName].Len() + s.atomsController.AtomsOnSCenters[elementName].Len()
@@ -124,13 +144,15 @@ func (s *Simulator) Simulate() {
 				total.RecombLhF += info.RecombLhF
 				total.RecombLhS += info.RecombLhS
 			}
+
 			total.Density = float64(len(s.atomsController.AtomsOnSurface)) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
 			total.DensityF = float64(s.atomsController.AtomsOnFCenters.Len()) / (float64(s.matrix.NumOfFSites))
 			total.DensityS = float64(s.atomsController.AtomsOnSCenters.Len()) / (float64(s.matrix.NumOfSSites))
 
 			s.infoCollector.TotalInfo = total
-
 			s.infoCollector.WriteInfo()
+
+			nextExcelWriteTime += excelWriteInterval
 		}
 	}
 
@@ -192,7 +214,7 @@ func (s *Simulator) getProcess() (process string, elementName string, processTim
 		return processes[i].probability < processes[j].probability
 	})
 
-	randomNumber := random.Float64()
+	randomNumber := randomx.Float64()
 	spentTime := CalcTime(totalLambda)
 
 	cumulativeProbability := 0.0
@@ -207,7 +229,7 @@ func (s *Simulator) getProcess() (process string, elementName string, processTim
 }
 
 func (s *Simulator) adsorbAtom(center rune, elementName string) {
-	var freeCells *random.Map[int, CellData]
+	var freeCells *randomx.Map[uint32, CellData]
 
 	switch center {
 	case 'S':
@@ -236,7 +258,7 @@ func (s *Simulator) adsorbAtom(center rune, elementName string) {
 }
 
 func (s *Simulator) desorbAtom(center rune, elementName string) {
-	var atoms *random.Map[int, Atom]
+	var atoms *randomx.Map[int, Atom]
 
 	switch center {
 	case 'S':
@@ -258,12 +280,13 @@ func (s *Simulator) desorbAtom(center rune, elementName string) {
 }
 
 func (s *Simulator) RecombEr(elementName string) {
-	s.desorbAtom('S', elementName)
-
 	info := s.infoCollector.Info[elementName]
 	info.RecombEr += 1
 	info.DesorbedAtoms += 1
 	s.infoCollector.Info[elementName] = info
+
+	randomElement := s.elems[rand.IntN(len(s.elems))]
+	s.desorbAtom('S', randomElement)
 }
 
 func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
@@ -285,7 +308,7 @@ func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
 	switch {
 	case nextCellInfo.IsFree:
 		s.atomsController.MoveAtom(atom, nextCellInfo)
-	case nextCellInfo.Center == 'S' && meta.recombinationProbabilityOnSSite >= random.Float64():
+	case nextCellInfo.Center == 'S' && meta.recombinationProbabilityOnSSite >= randomx.Float64():
 		info.DesorbedAtoms += 1
 		info.RecombLhS += 1
 		s.infoCollector.Info[elementName] = info
@@ -297,7 +320,7 @@ func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
 
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
-	case nextCellInfo.Center == 'F' && meta.recombinationProbabilityOnFSite >= random.Float64():
+	case nextCellInfo.Center == 'F' && meta.recombinationProbabilityOnFSite >= randomx.Float64():
 		info.DesorbedAtoms += 1
 		info.RecombLhF += 1
 		s.infoCollector.Info[elementName] = info

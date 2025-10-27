@@ -50,13 +50,13 @@ func (a AtomsOnCenters) Len() int {
 
 type Atom struct {
 	Id             int
-	X              int
-	Y              int
+	X              uint32
+	Y              uint32
 	OccupiedCentre rune
 	ElementName    string
 }
 
-func (a *Atom) ChangePosition(x int, y int, center rune) {
+func (a *Atom) ChangePosition(x uint32, y uint32, center rune) {
 	a.X = x
 	a.Y = y
 	a.OccupiedCentre = center
@@ -76,29 +76,33 @@ func (s *SurfaceAtomsController) AddAtomOnSurface(atom Atom) {
 	s.matrix.SetAtomOnCell(atom.X, atom.Y, atom.Id)
 }
 
-func (s *SurfaceAtomsController) GetNextAtomCoordinates(atomId int) (x, y int) {
-	movement := map[int64]struct {
-		x int
-		y int
+func (s *SurfaceAtomsController) GetNextAtomCoordinates(atomId int) (x, y uint32) {
+	movement := map[int32]struct {
+		x int32
+		y int32
 	}{
 		1: {-1, 0},
 		2: {0, 1},
 		3: {1, 0},
 		4: {0, -1},
 	}
-	nextX, nextY := 0, 0
+	var (
+		nextX, nextY uint32 = 0, 0
+	)
+
 	atom := s.AtomsOnSurface[atomId]
 
-	positionNotFount := true
-	for positionNotFount {
+	positionNotFound := true
+	for positionNotFound {
 		randomDirection, _ := rand.Int(rand.Reader, big.NewInt(4))
-		randomInt := randomDirection.Int64() + 1
-		possibleX, possibleY := atom.X+movement[randomInt].x, atom.Y+movement[randomInt].y
+		randomInt := int32(randomDirection.Int64() + 1)
+		possibleX := int32(atom.X) + movement[randomInt].x
+		possibleY := int32(atom.Y) + movement[randomInt].y
 
-		if (0 <= possibleX && possibleX < s.MatrixLimitX) &&
-			(0 <= possibleY && possibleY < s.MatrixLimitY) {
-			nextX, nextY = possibleX, possibleY
-			positionNotFount = false
+		if (0 <= possibleX && possibleX < int32(s.MatrixLimitX)) &&
+			(0 <= possibleY && possibleY < int32(s.MatrixLimitY)) {
+			nextX, nextY = uint32(possibleX), uint32(possibleY)
+			positionNotFound = false
 		}
 	}
 

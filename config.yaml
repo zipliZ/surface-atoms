@@ -27,12 +27,12 @@ elements:
     erlh: 0
     agDensity: 8e+14
 
-  - name: "O"
-    mass: 16.00
-    edes: 55000
-    edif: 27500
-    vdes: 1e+13
-    vdif: 1e+11
-    er: 16000
-    erlh: 2000
-    agDensity: 2e+14
+#  - name: "O"
+#    mass: 16.00
+#    edes: 55000
+#    edif: 27500
+#    vdes: 1e+13
+#    vdif: 1e+11
+#    er: 16000
+#    erlh: 2000
+#    agDensity: 2e+14

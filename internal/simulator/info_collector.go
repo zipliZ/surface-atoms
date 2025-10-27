@@ -16,7 +16,6 @@ type InfoCollector struct {
 	Info           map[string]Info
 	elementOrder   []string
 	TotalInfo      Info
-	Step           int
 	ElapsedTime    float64
 }
 
@@ -42,7 +41,6 @@ func NewInfoCollector(fileName string, floatPrecision int, elements []configs.El
 	}
 
 	headers := []string{
-		"Step N",
 		"Simulation time",
 	}
 
@@ -60,19 +58,21 @@ func NewInfoCollector(fileName string, floatPrecision int, elements []configs.El
 	)
 
 	elementOrder := make([]string, 0, len(elements))
-	for _, element := range elements {
-		headers = append(headers,
-			fmt.Sprintf("%s - Qty atoms on surface", element.Name),
-			fmt.Sprintf("%s - Qty adsorbed atoms", element.Name),
-			fmt.Sprintf("%s - Qty desorbed atoms", element.Name),
-			fmt.Sprintf("%s - Surface coverage", element.Name),
-			fmt.Sprintf("%s - Density F", element.Name),
-			fmt.Sprintf("%s - Density S", element.Name),
-			fmt.Sprintf("%s - Recomb Er", element.Name),
-			fmt.Sprintf("%s - Recomb Lh F", element.Name),
-			fmt.Sprintf("%s - Recomb Lh S", element.Name),
-		)
-		elementOrder = append(elementOrder, element.Name)
+	if len(elements) > 1 {
+		for _, element := range elements {
+			headers = append(headers,
+				fmt.Sprintf("%s - Qty atoms on surface", element.Name),
+				fmt.Sprintf("%s - Qty adsorbed atoms", element.Name),
+				fmt.Sprintf("%s - Qty desorbed atoms", element.Name),
+				fmt.Sprintf("%s - Surface coverage", element.Name),
+				fmt.Sprintf("%s - Density F", element.Name),
+				fmt.Sprintf("%s - Density S", element.Name),
+				fmt.Sprintf("%s - Recomb Er", element.Name),
+				fmt.Sprintf("%s - Recomb Lh F", element.Name),
+				fmt.Sprintf("%s - Recomb Lh S", element.Name),
+			)
+			elementOrder = append(elementOrder, element.Name)
+		}
 	}
 
 	row := sh.AddRow()
@@ -113,7 +113,6 @@ func (i *InfoCollector) WriteInfo() {
 	row := file.Sheet["Sheet1"].AddRow()
 
 	// Write common info (step and time)
-	row.AddCell().SetInt(i.Step)
 	row.AddCell().SetFloat(roundToDecimals(i.ElapsedTime, i.floatPrecision))
 
 	// Write total info
@@ -126,6 +125,13 @@ func (i *InfoCollector) WriteInfo() {
 	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombEr, i.floatPrecision))
 	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombLhF, i.floatPrecision))
 	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombLhS, i.floatPrecision))
+
+	if len(i.elementOrder) < 2 {
+		if err = file.Save(i.fileName); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 
 	// Write element-specific info
 	for _, element := range i.elementOrder {

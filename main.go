@@ -28,7 +28,7 @@ func main() {
 	}
 
 	var temperature int
-	var steps int
+	var simulationTime float64
 
 	args := os.Args
 	if len(args) == 3 {
@@ -37,7 +37,7 @@ func main() {
 			log.Fatal(err) // nolint
 		}
 		args[2] = strings.ReplaceAll(args[2], "_", "")
-		steps, err = strconv.Atoi(args[2])
+		simulationTime, err = strconv.ParseFloat(args[2], 64)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -46,11 +46,11 @@ func main() {
 		fmt.Print("Enter the temperature in Kelvin: ")
 		fmt.Scanln(&temperature)
 
-		fmt.Print("Enter the number of steps: ")
-		fmt.Scanln(&steps)
+		fmt.Print("Enter simulation time: ")
+		fmt.Scanln(&simulationTime)
 	}
 
-	simulator := simulator.NewSimulator(cfg, temperature, steps)
+	simulator := simulator.NewSimulator(cfg, temperature, simulationTime)
 	simulator.Simulate()
 
 	if len(args) != 3 {

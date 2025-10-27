@@ -10,8 +10,8 @@ import (
 type Matrix struct {
 	NumOfSSites         int
 	NumOfFSites         int
-	FreeCellsOfFCenters *random.Map[int, CellData]
-	FreeCellsOfSCenters *random.Map[int, CellData]
+	FreeCellsOfFCenters *random.Map[uint32, CellData]
+	FreeCellsOfSCenters *random.Map[uint32, CellData]
 	cells               [][]CellData
 	consts              configs.Constants
 }
@@ -24,9 +24,9 @@ type Matrix struct {
 // - IsFree: flag indicating whether the cell is free.
 // - AtomId: identifier of the atom present in the cell (if any).
 type CellData struct {
-	Id     int
-	X      int
-	Y      int
+	Id     uint32
+	X      uint32
+	Y      uint32
 	Center rune
 	IsFree bool
 	AtomId int
@@ -35,8 +35,8 @@ type CellData struct {
 func NewMatrix(consts configs.Constants) *Matrix {
 	return &Matrix{
 		cells:               [][]CellData{},
-		FreeCellsOfSCenters: random.NewRandMap[int, CellData](),
-		FreeCellsOfFCenters: random.NewRandMap[int, CellData](),
+		FreeCellsOfSCenters: random.NewRandMap[uint32, CellData](),
+		FreeCellsOfFCenters: random.NewRandMap[uint32, CellData](),
 		consts:              consts,
 	}
 }
@@ -52,12 +52,15 @@ func (m *Matrix) Init(x, y int) {
 	for i := range m.cells {
 		m.cells[i] = make([]CellData, y)
 		for j := range m.cells[i] {
-			m.cells[i][j].Id = i*x + j + 1
-			m.cells[i][j].X = j
-			m.cells[i][j].Y = i
-			m.cells[i][j].IsFree = true
-			m.cells[i][j].Center = 'F'
-			m.FreeCellsOfFCenters.Add(m.cells[i][j].Id, m.cells[i][j])
+			cell := CellData{
+				Id:     uint32(i*x + (j) + 1),
+				X:      uint32(j),
+				Y:      uint32(i),
+				Center: 'F',
+				IsFree: true,
+			}
+			m.cells[i][j] = cell
+			m.FreeCellsOfFCenters.Add(cell.Id, cell)
 		}
 	}
 
@@ -79,7 +82,7 @@ func (m *Matrix) Init(x, y int) {
 
 // SetAtomOnCell places an atom on the cell (x, y) with the given atomId.
 // If the cell was free, it is no longer considered free.
-func (m *Matrix) SetAtomOnCell(x, y int, atomId int) {
+func (m *Matrix) SetAtomOnCell(x, y uint32, atomId int) {
 	m.cells[y][x].IsFree = false
 	m.cells[y][x].AtomId = atomId
 
@@ -93,7 +96,7 @@ func (m *Matrix) SetAtomOnCell(x, y int, atomId int) {
 
 // ClearCell clears the cell (x, y), removing the atom if present.
 // If the cell was already free, it remains free.
-func (m *Matrix) ClearCell(x, y int) {
+func (m *Matrix) ClearCell(x, y uint32) {
 	m.cells[y][x].IsFree = true
 	m.cells[y][x].AtomId = 0
 
@@ -106,7 +109,7 @@ func (m *Matrix) ClearCell(x, y int) {
 }
 
 // GetCellInfo returns information about the cell at (x, y).
-func (m *Matrix) GetCellInfo(x, y int) CellData {
+func (m *Matrix) GetCellInfo(x, y uint32) CellData {
 	return m.cells[y][x]
 }
 
