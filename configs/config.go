@@ -19,7 +19,15 @@ type Simulating struct {
 	MatrixLenY     int             `json:"matrixLenY"`
 	GraphicsToPlot []GraphicToPlot `json:"graphicsToPlot"`
 	// number of decimals in Excel
-	FloatPrecision int `json:"floatPrecision"`
+	FloatPrecision       int              `json:"floatPrecision"`
+	StopOnQuasiSteady    bool             `json:"stopOnQuasiSteady"`
+	RequiredStableChecks int              `json:"requiredStableChecks"`
+	CheckParameters      []CheckParameter `json:"checkParameters"` // ["density", "densityF", "densityS"]
+}
+
+type CheckParameter struct {
+	Name      string  `json:"name"`
+	Tolerance float64 `json:"tolerance"`
 }
 
 type Element struct {

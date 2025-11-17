@@ -2,7 +2,6 @@ simulating:
   logPercent: 0.1
   matrixLenX: 1000
   matrixLenY: 1000
-  allowTimeProgressInIdle: true
   floatPrecision: 8
   graphicsToPlot:
     [
@@ -10,6 +9,16 @@ simulating:
       { xAxis: "Simulation time", yAxis: "Density F" },
       { xAxis: "Simulation time", yAxis: "Density S" },
     ]
+#  Включена ли остановка при достижении квази-стационарного состояния
+  "stopOnQuasiSteady": true
+# Количество последовательных проверок на квази-стационарность, необходимых для остановки симуляции
+  "requiredStableChecks": 10
+  "checkParameters": [
+#     {"name":"density" ,"tolerance":1},
+#     {"name":"atomsOnSurface" ,"tolerance":0.1},
+#     {"name":"densityF" ,"tolerance":1},
+     {"name":"densityS" ,"tolerance":0.001}
+  ]
 
 consts:
   fDensity: 1.5e+15

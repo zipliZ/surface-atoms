@@ -7,6 +7,7 @@ import (
 	"main/configs"
 	"main/internal/graphic_plotter"
 	randomx "main/internal/random"
+	"math"
 	"math/rand/v2"
 	"os"
 	"sort"
@@ -24,6 +25,9 @@ type Simulator struct {
 	meta                  map[string]SimulationMeta
 	elems                 []string
 	graphicPlotter        *graphic_plotter.GraphicPlotter
+
+	previousValues        map[string]map[string]float64 // [elementName][parameterName]value
+	stableIterationsCount int
 }
 
 func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) *Simulator {
@@ -63,15 +67,17 @@ func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) *
 		cfg.Simulating.GraphicsToPlot)
 
 	return &Simulator{
-		cfg:             cfg,
-		matrix:          matrix,
-		atomsController: atomsController,
-		temperature:     temperature,
-		simulationTime:  simulationTime,
-		infoCollector:   infoCollector,
-		graphicPlotter:  graphicPlotter,
-		meta:            meta,
-		elems:           elems,
+		cfg:                   cfg,
+		matrix:                matrix,
+		atomsController:       atomsController,
+		temperature:           temperature,
+		simulationTime:        simulationTime,
+		infoCollector:         infoCollector,
+		graphicPlotter:        graphicPlotter,
+		meta:                  meta,
+		elems:                 elems,
+		previousValues:        make(map[string]map[string]float64),
+		stableIterationsCount: 0,
 	}
 }
 
@@ -93,13 +99,7 @@ func (s *Simulator) Simulate() {
 	nextExcelWriteTime := excelWriteInterval
 
 	progressCount := 1
-
-	totalIterations := 0
-	defer func() {
-		fmt.Println("Total iterations:", totalIterations)
-	}()
 	for s.currentSimulationTime <= s.simulationTime {
-		totalIterations++
 		if s.currentSimulationTime >= nextProgressTime && progressCount <= 10 {
 			currentPercent := progressCount * 10
 			slog.Info(fmt.Sprintf("Simulated %d%%", currentPercent), "physical time", s.currentSimulationTime, "time", time.Since(startTime))
@@ -151,6 +151,15 @@ func (s *Simulator) Simulate() {
 
 			s.infoCollector.TotalInfo = total
 			s.infoCollector.WriteInfo()
+
+			if s.checkQuasiSteadyState() {
+				slog.Info("Quasi-steady state reached",
+					"physical_time", s.currentSimulationTime,
+					"elapsed_time", time.Since(startTime),
+					"stable_iterations", s.stableIterationsCount,
+					"checked_parameters", s.cfg.Simulating.CheckParameters)
+				break
+			}
 
 			nextExcelWriteTime += excelWriteInterval
 		}
@@ -339,4 +348,68 @@ func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
 		s.infoCollector.Info[elementName] = info
 	}
 	return
+}
+
+func (s *Simulator) checkQuasiSteadyState() bool {
+	if !s.cfg.Simulating.StopOnQuasiSteady || len(s.cfg.Simulating.CheckParameters) == 0 {
+		return false
+	}
+
+	isStable := true
+
+	for elementName := range s.meta {
+		info := s.infoCollector.Info[elementName]
+
+		if s.previousValues[elementName] == nil {
+			s.previousValues[elementName] = make(map[string]float64)
+		}
+
+		for _, param := range s.cfg.Simulating.CheckParameters {
+			var currentValue float64
+
+			switch param.Name {
+			case "density":
+				currentValue = info.Density
+			case "densityF":
+				currentValue = info.DensityF
+			case "densityS":
+				currentValue = info.DensityS
+			case "atomsOnSurface":
+				currentValue = float64(info.AtomsOnSurface)
+
+			default:
+				slog.Warn("unknown parameter for quasi-steady check", "parameter", param)
+				continue
+			}
+
+			previousValue, exists := s.previousValues[elementName][param.Name]
+			if !exists {
+				s.previousValues[elementName][param.Name] = currentValue
+				isStable = false
+				continue
+			}
+
+			var relativeChange float64
+			if previousValue != 0 {
+				relativeChange = (currentValue - previousValue) / previousValue
+				relativeChange = math.Abs(relativeChange)
+			} else if currentValue != 0 {
+				relativeChange = 1.0
+			}
+
+			if relativeChange > param.Tolerance/100.0 {
+				isStable = false
+			}
+
+			s.previousValues[elementName][param.Name] = currentValue
+		}
+	}
+
+	if isStable {
+		s.stableIterationsCount++
+	} else {
+		s.stableIterationsCount = 0
+	}
+
+	return s.stableIterationsCount >= s.cfg.Simulating.RequiredStableChecks
 }
