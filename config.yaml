@@ -14,10 +14,10 @@ simulating:
 # Количество последовательных проверок на квази-стационарность, необходимых для остановки симуляции
   "requiredStableChecks": 10
   "checkParameters": [
-#     {"name":"density" ,"tolerance":1},
+     {"name":"density" ,"tolerance":1},
 #     {"name":"atomsOnSurface" ,"tolerance":0.1},
 #     {"name":"densityF" ,"tolerance":1},
-     {"name":"densityS" ,"tolerance":0.001}
+#     {"name":"densityS" ,"tolerance":0.5}
   ]
 
 consts:

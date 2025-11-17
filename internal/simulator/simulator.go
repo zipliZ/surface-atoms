@@ -1,6 +1,7 @@
 package simulator
 
 import (
+	"container/list"
 	"fmt"
 	"log"
 	"log/slog"
@@ -26,8 +27,21 @@ type Simulator struct {
 	elems                 []string
 	graphicPlotter        *graphic_plotter.GraphicPlotter
 
-	previousValues        map[string]map[string]float64 // [elementName][parameterName]value
+	// [elementName][parameterName]Values
+	elementValues         map[string]map[string]*Values
 	stableIterationsCount int
+}
+
+type Values struct {
+	Values *list.List
+	Total  float64
+}
+
+func NewValues() *Values {
+	return &Values{
+		Values: list.New(),
+		Total:  0,
+	}
 }
 
 func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) *Simulator {
@@ -76,7 +90,7 @@ func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) *
 		graphicPlotter:        graphicPlotter,
 		meta:                  meta,
 		elems:                 elems,
-		previousValues:        make(map[string]map[string]float64),
+		elementValues:         make(map[string]map[string]*Values),
 		stableIterationsCount: 0,
 	}
 }
@@ -360,8 +374,8 @@ func (s *Simulator) checkQuasiSteadyState() bool {
 	for elementName := range s.meta {
 		info := s.infoCollector.Info[elementName]
 
-		if s.previousValues[elementName] == nil {
-			s.previousValues[elementName] = make(map[string]float64)
+		if s.elementValues[elementName] == nil {
+			s.elementValues[elementName] = make(map[string]*Values)
 		}
 
 		for _, param := range s.cfg.Simulating.CheckParameters {
@@ -382,26 +396,40 @@ func (s *Simulator) checkQuasiSteadyState() bool {
 				continue
 			}
 
-			previousValue, exists := s.previousValues[elementName][param.Name]
+			values, exists := s.elementValues[elementName][param.Name]
 			if !exists {
-				s.previousValues[elementName][param.Name] = currentValue
+				s.elementValues[elementName][param.Name] = NewValues()
 				isStable = false
 				continue
 			}
 
 			var relativeChange float64
-			if previousValue != 0 {
-				relativeChange = (currentValue - previousValue) / previousValue
-				relativeChange = math.Abs(relativeChange)
-			} else if currentValue != 0 {
+			if values.Values.Len() == s.cfg.Simulating.RequiredStableChecks {
+				meanValue := values.Total / float64(values.Values.Len())
+				relativeChange = math.Abs((currentValue - meanValue) / meanValue)
+
+				// Remove oldest value
+				oldestElement := values.Values.Back()
+				if oldestElement != nil {
+					oldestValue := oldestElement.Value.(float64)
+					values.Total -= oldestValue
+					values.Values.Remove(oldestElement)
+				}
+				values.Values.PushFront(currentValue)
+				values.Total += currentValue
+				s.elementValues[elementName][param.Name] = values
+
+			} else {
 				relativeChange = 1.0
+				values.Values.PushFront(currentValue)
+				values.Total += currentValue
+				s.elementValues[elementName][param.Name] = values
 			}
 
 			if relativeChange > param.Tolerance/100.0 {
 				isStable = false
 			}
 
-			s.previousValues[elementName][param.Name] = currentValue
 		}
 	}
 
