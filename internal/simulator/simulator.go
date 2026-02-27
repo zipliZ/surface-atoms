@@ -404,7 +404,7 @@ func (s *Simulator) checkQuasiSteadyState() bool {
 			}
 
 			var relativeChange float64
-			if values.Values.Len() == s.cfg.Simulating.RequiredStableChecks {
+			if values.Values.Len() == param.ValuesWindowSize {
 				meanValue := values.Total / float64(values.Values.Len())
 				relativeChange = math.Abs((currentValue - meanValue) / meanValue)
 

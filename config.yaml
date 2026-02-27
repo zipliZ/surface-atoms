@@ -9,15 +9,34 @@ simulating:
       { xAxis: "Simulation time", yAxis: "Density F" },
       { xAxis: "Simulation time", yAxis: "Density S" },
     ]
-#  Включена ли остановка при достижении квази-стационарного состояния
+  #  Включена ли остановка при достижении квази-стационарного состояния
   "stopOnQuasiSteady": true
-# Количество последовательных проверок на квази-стационарность, необходимых для остановки симуляции
+  # Количество последовательных проверок на квази-стационарность, необходимых для остановки симуляции
   "requiredStableChecks": 10
   "checkParameters": [
-     {"name":"density" ,"tolerance":1},
-#     {"name":"atomsOnSurface" ,"tolerance":0.1},
-#     {"name":"densityF" ,"tolerance":1},
-#     {"name":"densityS" ,"tolerance":0.5}
+    {
+      #      Название поля по которому смотреть изменения
+      "name": "densityF" ,
+      #      Процент отклонения
+      "tolerance": 1,
+      #      Размер окна в котором хранить последние значения
+      "valuesWindowSize": 100,
+    },
+    #    {
+    #      "name": "densityS" ,
+    #      "tolerance": 1,
+    #      "valuesWindowSize": 100,
+    #    },
+    #    {
+    #      "name": "density" ,
+    #      "tolerance": 1,
+    #      "valuesWindowSize": 100,
+    #    },
+    #    {
+    #      "name": "atomsOnSurface" ,
+    #      "tolerance": 0.1,
+    #      "valuesWindowSize": 100,
+    #    },
   ]
 
 consts:

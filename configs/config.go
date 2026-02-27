@@ -26,8 +26,9 @@ type Simulating struct {
 }
 
 type CheckParameter struct {
-	Name      string  `json:"name"`
-	Tolerance float64 `json:"tolerance"`
+	Name             string  `json:"name"`
+	Tolerance        float64 `json:"tolerance"`
+	ValuesWindowSize int     `json:"valuesWindowSize"`
 }
 
 type Element struct {
