@@ -15,7 +15,8 @@ type InfoCollector struct {
 	floatPrecision int
 	Info           map[string]Info
 	elementOrder   []string
-	TotalInfo      Info
+	combinedAtom   *string
+	TotalInfo      InfoWithCombinedAtoms
 	ElapsedTime    float64
 }
 
@@ -32,8 +33,13 @@ type Info struct {
 	RecombLhS      float64
 }
 
+type InfoWithCombinedAtoms struct {
+	Info
+	CombinedAtomsOnSurface int
+}
+
 // NewInfoCollector creates a new InfoCollector. It also generates an Excel file with a pre-filled header.
-func NewInfoCollector(fileName string, floatPrecision int, elements []configs.Element) (*InfoCollector, error) {
+func NewInfoCollector(fileName string, floatPrecision int, elements []configs.Element, combinedAtom *string) (*InfoCollector, error) {
 	file := xlsx.NewFile()
 	sh, err := file.AddSheet("Sheet1")
 	if err != nil {
@@ -56,6 +62,10 @@ func NewInfoCollector(fileName string, floatPrecision int, elements []configs.El
 		"Recomb Lh F",
 		"Recomb Lh S",
 	)
+
+	if combinedAtom != nil {
+		headers = append(headers, fmt.Sprintf("%s - Formed count", *combinedAtom))
+	}
 
 	elementOrder := make([]string, 0, len(elements))
 	if len(elements) > 1 {
@@ -98,8 +108,9 @@ func NewInfoCollector(fileName string, floatPrecision int, elements []configs.El
 		fileName:       fileName,
 		floatPrecision: floatPrecision,
 		Info:           info,
-		TotalInfo:      Info{},
+		TotalInfo:      InfoWithCombinedAtoms{},
 		elementOrder:   elementOrder,
+		combinedAtom:   combinedAtom,
 	}, nil
 }
 
@@ -125,6 +136,9 @@ func (i *InfoCollector) WriteInfo() {
 	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombEr, i.floatPrecision))
 	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombLhF, i.floatPrecision))
 	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombLhS, i.floatPrecision))
+	if i.combinedAtom != nil {
+		row.AddCell().SetInt(i.TotalInfo.CombinedAtomsOnSurface)
+	}
 
 	if len(i.elementOrder) < 2 {
 		if err = file.Save(i.fileName); err != nil {

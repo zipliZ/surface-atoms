@@ -138,7 +138,6 @@ func (p *GraphicPlotter) plotGraph(columnValues map[string][]float64, xName, yNa
 		}),
 	)
 
-	// Put data into instance
 	line.SetXAxis(columnValues[xName]).
 		AddSeries(p.LineLabel, generateLineItems(columnValues[yName])).
 		SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: opts.Bool(true)}))

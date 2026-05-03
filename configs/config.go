@@ -41,6 +41,7 @@ type Element struct {
 	Er        float64 `json:"er"`
 	Erlh      float64 `json:"erlh"`
 	AgDensity float64 `json:"agDensity"`
+	Sort      uint8   `json:"sort"`
 }
 
 type GraphicToPlot struct {

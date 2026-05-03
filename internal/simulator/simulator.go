@@ -1,6 +1,7 @@
 package simulator
 
 import (
+	"cmp"
 	"container/list"
 	"fmt"
 	"log"
@@ -9,9 +10,10 @@ import (
 	"main/internal/graphic_plotter"
 	randomx "main/internal/random"
 	"math"
-	"math/rand/v2"
 	"os"
+	"slices"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -50,11 +52,20 @@ func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) *
 
 	atomsController := NewSurfaceAtomsController(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY, matrix, cfg.Elements)
 
-	meta := make(map[string]SimulationMeta)
-	elems := make([]string, 0, len(cfg.Elements))
+	var (
+		meta         = make(map[string]SimulationMeta)
+		elems        = make([]string, 0, len(cfg.Elements))
+		combinedAtom *string
+	)
+
 	for _, element := range cfg.Elements {
 		meta[element.Name] = Fill(element, cfg.Constants, float64(temperature))
 		elems = append(elems, element.Name)
+	}
+
+	if len(elems) > 1 {
+		combinedName := GetCombinedAtomName(cfg.Elements)
+		combinedAtom = &combinedName
 	}
 
 	startTime := time.Now().Format("2006-01-02 15_04_05")
@@ -68,7 +79,9 @@ func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) *
 	infoCollector, err := NewInfoCollector(
 		dirName+string(os.PathSeparator)+excelFileName,
 		cfg.Simulating.FloatPrecision,
-		cfg.Elements)
+		cfg.Elements,
+		combinedAtom,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -93,6 +106,19 @@ func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) *
 		elementValues:         make(map[string]map[string]*Values),
 		stableIterationsCount: 0,
 	}
+}
+
+func GetCombinedAtomName(elements []configs.Element) string {
+	slices.SortFunc(elements, func(a, b configs.Element) int {
+		return cmp.Compare(a.Sort, b.Sort)
+	})
+
+	names := make([]string, len(elements))
+	for i, element := range elements {
+		names[i] = element.Name
+	}
+
+	return strings.Join(names, "")
 }
 
 // Simulate - function that simulates the processes of adsorption, diffusion, recombination, and desorption of atoms on a surface.
@@ -140,7 +166,7 @@ func (s *Simulator) Simulate() {
 
 		if s.currentSimulationTime >= nextExcelWriteTime {
 			s.infoCollector.ElapsedTime = s.currentSimulationTime
-			total := Info{}
+			total := InfoWithCombinedAtoms{}
 
 			for elementName = range s.meta {
 				info := s.infoCollector.Info[elementName]
@@ -162,6 +188,7 @@ func (s *Simulator) Simulate() {
 			total.Density = float64(len(s.atomsController.AtomsOnSurface)) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
 			total.DensityF = float64(s.atomsController.AtomsOnFCenters.Len()) / (float64(s.matrix.NumOfFSites))
 			total.DensityS = float64(s.atomsController.AtomsOnSCenters.Len()) / (float64(s.matrix.NumOfSSites))
+			total.CombinedAtomsOnSurface = s.infoCollector.TotalInfo.CombinedAtomsOnSurface
 
 			s.infoCollector.TotalInfo = total
 			s.infoCollector.WriteInfo()
@@ -308,7 +335,14 @@ func (s *Simulator) RecombEr(elementName string) {
 	info.DesorbedAtoms += 1
 	s.infoCollector.Info[elementName] = info
 
-	randomElement := s.elems[rand.IntN(len(s.elems))]
+	randomElement := s.elems[randomx.Int(len(s.elems))]
+	randomElementInfo := s.infoCollector.Info[randomElement]
+	randomElementInfo.RecombEr += 1
+	s.infoCollector.Info[randomElement] = randomElementInfo
+
+	if elementName != randomElement {
+		s.infoCollector.TotalInfo.CombinedAtomsOnSurface++
+	}
 	s.desorbAtom('S', randomElement)
 }
 
@@ -339,7 +373,12 @@ func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
 		nextAtom := s.atomsController.AtomsOnSurface[nextCellInfo.AtomId]
 		nextElementInfo := s.infoCollector.Info[nextAtom.ElementName]
 		nextElementInfo.DesorbedAtoms += 1
+		nextElementInfo.RecombLhS += 1
 		s.infoCollector.Info[nextAtom.ElementName] = nextElementInfo
+
+		if IsDifferentAtoms(elementName, nextAtom.ElementName) {
+			s.infoCollector.TotalInfo.CombinedAtomsOnSurface++
+		}
 
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
@@ -351,7 +390,12 @@ func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
 		nextAtom := s.atomsController.AtomsOnSurface[nextCellInfo.AtomId]
 		nextElementInfo := s.infoCollector.Info[nextAtom.ElementName]
 		nextElementInfo.DesorbedAtoms += 1
+		nextElementInfo.RecombLhF += 1
 		s.infoCollector.Info[nextAtom.ElementName] = nextElementInfo
+
+		if IsDifferentAtoms(elementName, nextAtom.ElementName) {
+			s.infoCollector.TotalInfo.CombinedAtomsOnSurface++
+		}
 
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
@@ -362,6 +406,10 @@ func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
 		s.infoCollector.Info[elementName] = info
 	}
 	return
+}
+
+func IsDifferentAtoms(a string, b string) bool {
+	return a != b
 }
 
 func (s *Simulator) checkQuasiSteadyState() bool {
