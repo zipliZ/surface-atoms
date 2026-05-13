@@ -6,14 +6,8 @@ simulating:
   graphicsToPlot:
     [
       { xAxis: "Simulation time", yAxis: "Surface coverage" },
-      { xAxis: "Simulation time", yAxis: "N - Surface coverage" },
-      { xAxis: "Simulation time", yAxis: "O - Surface coverage" },
       { xAxis: "Simulation time", yAxis: "Density F" },
-      { xAxis: "Simulation time", yAxis: "N - Density F" },
-      { xAxis: "Simulation time", yAxis: "O - Density F" },
       { xAxis: "Simulation time", yAxis: "Density S" },
-      { xAxis: "Simulation time", yAxis: "N - Density S" },
-      { xAxis: "Simulation time", yAxis: "O - Density S" },
     ]
   #  Включена ли остановка при достижении квази-стационарного состояния
   "stopOnQuasiSteady": true
@@ -24,7 +18,7 @@ simulating:
       #      Название поля по которому смотреть изменения
       "name": "densityF" ,
       #      Процент отклонения
-      "tolerance": 1,
+      "tolerance": 2,
       #      Размер окна в котором хранить последние значения
       "valuesWindowSize": 100,
     },

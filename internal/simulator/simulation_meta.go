@@ -89,6 +89,7 @@ func calcR7(element configs.Element, temperature float64, r5 float64) float64 {
 	return r7
 }
 
+// TODO: для разных элементов добавить
 func calcRecombinationProbabilityOnSSite(element configs.Element, temperature float64) float64 {
 	return math.Exp(-element.Er / (8.31 * float64(temperature)))
 }
