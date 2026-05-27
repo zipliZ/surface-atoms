@@ -170,7 +170,7 @@ func generateXYItems(xValues, yValues []float64) []opts.LineData {
 func plotGraph(allData []FileData, xName, yName string) *charts.Line {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
-		charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeEssos, PageTitle: "Combined Results", Width: "1200px", Height: "600px"}),
+		charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeInfographic, PageTitle: "Combined Results", Width: "1200px", Height: "600px"}),
 		charts.WithTitleOpts(opts.Title{
 			Title: fmt.Sprintf("%s / %s", yName, xName),
 		}),

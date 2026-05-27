@@ -20,7 +20,7 @@ simulating:
       #      Процент отклонения
       "tolerance": 2,
       #      Размер окна в котором хранить последние значения
-      "valuesWindowSize": 100,
+      "valuesWindowSize": 50,
     },
     #    {
     #      "name": "densityS" ,

@@ -1,4 +1,4 @@
-package simulator
+package simulation
 
 import (
 	"cmp"
@@ -9,7 +9,6 @@ import (
 	"main/configs"
 	"main/internal/graphic_plotter"
 	randomx "main/internal/random"
-	"math"
 	"os"
 	"slices"
 	"sort"
@@ -415,76 +414,6 @@ func IsDifferentAtoms(a string, b string) bool {
 func (s *Simulator) checkQuasiSteadyState() bool {
 	if !s.cfg.Simulating.StopOnQuasiSteady || len(s.cfg.Simulating.CheckParameters) == 0 {
 		return false
-	}
-
-	isStable := true
-
-	for elementName := range s.meta {
-		info := s.infoCollector.Info[elementName]
-
-		if s.elementValues[elementName] == nil {
-			s.elementValues[elementName] = make(map[string]*Values)
-		}
-
-		for _, param := range s.cfg.Simulating.CheckParameters {
-			var currentValue float64
-
-			switch param.Name {
-			case "density":
-				currentValue = info.Density
-			case "densityF":
-				currentValue = info.DensityF
-			case "densityS":
-				currentValue = info.DensityS
-			case "atomsOnSurface":
-				currentValue = float64(info.AtomsOnSurface)
-
-			default:
-				slog.Warn("unknown parameter for quasi-steady check", "parameter", param)
-				continue
-			}
-
-			values, exists := s.elementValues[elementName][param.Name]
-			if !exists {
-				s.elementValues[elementName][param.Name] = NewValues()
-				isStable = false
-				continue
-			}
-
-			var relativeChange float64
-			if values.Values.Len() == param.ValuesWindowSize {
-				meanValue := values.Total / float64(values.Values.Len())
-				relativeChange = math.Abs((currentValue - meanValue) / meanValue)
-
-				// Remove oldest value
-				oldestElement := values.Values.Back()
-				if oldestElement != nil {
-					oldestValue := oldestElement.Value.(float64)
-					values.Total -= oldestValue
-					values.Values.Remove(oldestElement)
-				}
-				values.Values.PushFront(currentValue)
-				values.Total += currentValue
-				s.elementValues[elementName][param.Name] = values
-
-			} else {
-				relativeChange = 1.0
-				values.Values.PushFront(currentValue)
-				values.Total += currentValue
-				s.elementValues[elementName][param.Name] = values
-			}
-
-			if relativeChange > param.Tolerance/100.0 {
-				isStable = false
-			}
-
-		}
-	}
-
-	if isStable {
-		s.stableIterationsCount++
-	} else {
-		s.stableIterationsCount = 0
 	}
 
 	return s.stableIterationsCount >= s.cfg.Simulating.RequiredStableChecks

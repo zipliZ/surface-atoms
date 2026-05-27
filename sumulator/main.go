@@ -5,7 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"main/configs"
-	"main/internal/simulator"
+	"main/internal/simulation"
 	"os"
 	"runtime/debug"
 	"strconv"
@@ -50,7 +50,7 @@ func main() {
 		fmt.Scanln(&simulationTime)
 	}
 
-	simulator := simulator.NewSimulator(cfg, temperature, simulationTime)
+	simulator := simulation.NewSimulator(cfg, temperature, simulationTime)
 	simulator.Simulate()
 
 	if len(args) != 3 {

@@ -129,7 +129,7 @@ func generateLineItems(yValues []float64) []opts.LineData {
 func (p *GraphicPlotter) plotGraph(columnValues map[string][]float64, xName, yName string) (*charts.Line, error) {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
-		charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeEssos, PageTitle: "Surface Atoms", Width: "1200px"}),
+		charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeInfographic, PageTitle: "Surface Atoms", Width: "1200px"}),
 		charts.WithTitleOpts(opts.Title{
 			Title: fmt.Sprintf("%s/%s", yName, xName),
 		}), charts.WithYAxisOpts(opts.YAxis{
