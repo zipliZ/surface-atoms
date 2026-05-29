@@ -9,14 +9,40 @@ import (
 	"strconv"
 	"strings"
 
-	"main/configs"
-
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/components"
 	"github.com/go-echarts/go-echarts/v2/opts"
 	"github.com/go-echarts/go-echarts/v2/types"
 	"github.com/xuri/excelize/v2"
+	"gopkg.in/yaml.v3"
 )
+
+type fileConfig struct {
+	Simulating simulatingConfig `yaml:"simulating"`
+}
+
+type simulatingConfig struct {
+	GraphicsToPlot []graphicToPlot `yaml:"graphicsToPlot"`
+}
+
+type graphicToPlot struct {
+	XAxis string `yaml:"xAxis"`
+	YAxis string `yaml:"yAxis"`
+}
+
+func configLoad(path string) (fileConfig, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return fileConfig{}, err
+	}
+
+	var cfg fileConfig
+	if err := yaml.Unmarshal(content, &cfg); err != nil {
+		return fileConfig{}, err
+	}
+
+	return cfg, nil
+}
 
 type FileData struct {
 	FileName     string
@@ -24,7 +50,7 @@ type FileData struct {
 }
 
 func main() {
-	cfg, err := configs.New()
+	cfg, err := configLoad("./../../config.yaml")
 	if err != nil {
 		// fallback if config can't be loaded, we can still use default graphics or exit
 		log.Fatalf("failed to load configs: %v", err)
@@ -103,7 +129,7 @@ func main() {
 	log.Printf("Successfully generated combined combined_results.html with data from %d files", len(allData))
 }
 
-func readExcel(exelFilePath string, graphicsToPlot []configs.GraphicToPlot) (map[string][]float64, error) {
+func readExcel(exelFilePath string, graphicsToPlot []graphicToPlot) (map[string][]float64, error) {
 	file, err := excelize.OpenFile(exelFilePath)
 	if err != nil {
 		return nil, err
