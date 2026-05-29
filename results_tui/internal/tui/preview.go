@@ -6,12 +6,14 @@ import (
 	"math"
 	"strings"
 
+	"results_tui/internal/domain"
 	"results_tui/internal/results"
 )
 
 func (m Model) previewChart(width, height int) (string, error) {
-	if m.xAxis == "" || m.yAxis == "" {
-		return "", errors.New("select X and Y columns to preview")
+	graph, err := m.previewGraph()
+	if err != nil {
+		return "", err
 	}
 
 	files := m.selectedFiles()
@@ -20,17 +22,29 @@ func (m Model) previewChart(width, height int) (string, error) {
 	}
 
 	file := files[0]
-	columns, err := results.ReadExcelColumns(file.Path, []string{m.xAxis, m.yAxis}, m.mergeSuffix)
+	columns, err := results.ReadExcelColumns(file.Path, []string{graph.XAxis, graph.YAxis}, graph.MergeSuffix)
 	if err != nil {
 		return "", err
 	}
-	x := results.FirstColumn(columns, m.xAxis, m.mergeSuffix)
-	y := results.FirstColumn(columns, m.yAxis, m.mergeSuffix)
+	x := results.FirstColumn(columns, graph.XAxis, graph.MergeSuffix)
+	y := results.FirstColumn(columns, graph.YAxis, graph.MergeSuffix)
 	if len(x) == 0 || len(y) == 0 {
 		return "", errors.New("current columns are not available in the first selected file")
 	}
 
 	return asciiPlot(x, y, width, height), nil
+}
+
+func (m Model) previewGraph() (domain.PlotConfig, error) {
+	if m.focus == panelGraphs && len(m.graphs) > 0 {
+		cursor := clampCursor(m.graphCursor, len(m.graphs))
+		return m.graphs[cursor], nil
+	}
+
+	if m.xAxis == "" || m.yAxis == "" {
+		return domain.PlotConfig{}, errors.New("select X and Y columns to preview")
+	}
+	return domain.PlotConfig{XAxis: m.xAxis, YAxis: m.yAxis, MergeSuffix: m.mergeSuffix}, nil
 }
 
 func asciiPlot(xValues, yValues []float64, width, height int) string {

@@ -15,7 +15,8 @@ func (m Model) View() string {
 	leftWidth := max(30, m.width/3-2)
 	midWidth := max(34, m.width/3-2)
 	rightWidth := max(30, m.width-leftWidth-midWidth-8)
-	bodyHeight := max(12, m.height-12)
+	bottomHeight := min(18, max(12, m.height/3))
+	bodyHeight := max(8, m.height-bottomHeight-5)
 
 	top := lipgloss.JoinHorizontal(
 		lipgloss.Top,
@@ -26,8 +27,8 @@ func (m Model) View() string {
 		m.renderPanel(panelGraphs, "Graphs", m.renderGraphs(bodyHeight), rightWidth, bodyHeight),
 	)
 
-	bottomHeight := max(7, m.height-bodyHeight-7)
-	bottom := m.renderPanel(panelOutput, "Preview and export", m.renderOutput(bottomHeight), max(20, m.width-4), bottomHeight)
+	outputWidth := max(20, m.width-4)
+	bottom := m.renderPanel(panelOutput, "Preview and export", m.renderOutput(bottomHeight, outputWidth), outputWidth, bottomHeight)
 	help := m.renderHelp()
 	return lipgloss.JoinVertical(lipgloss.Left, top, bottom, help)
 }
@@ -131,7 +132,7 @@ func (m Model) renderGraphs(height int) string {
 	return fitLines(lines, height-3)
 }
 
-func (m Model) renderOutput(height int) string {
+func (m Model) renderOutput(height, width int) string {
 	status := m.status
 	if status == "" {
 		status = "Ready."
@@ -156,7 +157,9 @@ func (m Model) renderOutput(height int) string {
 	}
 
 	lines = append(lines, "", "Preview:")
-	preview, err := m.previewChart(52, max(4, height-len(lines)-3))
+	maxBodyLines := max(1, height-3)
+	plotHeight := max(3, maxBodyLines-len(lines)-1)
+	preview, err := m.previewChart(min(120, max(20, width-6)), plotHeight)
 	if err != nil {
 		lines = append(lines, mutedStyle.Render(err.Error()))
 	} else {
