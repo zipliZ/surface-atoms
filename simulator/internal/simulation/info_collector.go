@@ -11,17 +11,17 @@ import (
 
 // InfoCollector - structure that collects information about the simulation progress.
 type InfoCollector struct {
-	fileName       string
-	floatPrecision int
-	workbook       *xlsx.File
-	sheet          *xlsx.Sheet
-	output         *os.File
-	closed         bool
-	Info           map[string]Info
-	elementOrder   []string
-	combinedAtom   *string
-	TotalInfo      InfoWithCombinedAtoms
-	ElapsedTime    float64
+	fileName        string
+	floatPrecision  int
+	workbook        *xlsx.File
+	sheet           *xlsx.Sheet
+	output          *os.File
+	closed          bool
+	Info            map[string]Info
+	elementOrder    []string
+	formedAtomOrder []string
+	TotalInfo       InfoWithCombinedAtoms
+	ElapsedTime     float64
 }
 
 // Info - structure containing details about the simulation progress.
@@ -39,11 +39,11 @@ type Info struct {
 
 type InfoWithCombinedAtoms struct {
 	Info
-	CombinedAtomsOnSurface int
+	FormedAtoms map[string]int
 }
 
 // NewInfoCollector creates a new InfoCollector. It also generates an Excel file with a pre-filled header.
-func NewInfoCollector(fileName string, floatPrecision int, elements []configs.Element, combinedAtom *string) (*InfoCollector, error) {
+func NewInfoCollector(fileName string, floatPrecision int, elements []configs.Element, formedAtomNames []string) (*InfoCollector, error) {
 	file := xlsx.NewFile()
 	sh, err := file.AddSheet("Sheet1")
 	if err != nil {
@@ -67,8 +67,8 @@ func NewInfoCollector(fileName string, floatPrecision int, elements []configs.El
 		"Recomb Lh S",
 	)
 
-	if combinedAtom != nil {
-		headers = append(headers, fmt.Sprintf("%s - Formed count", *combinedAtom))
+	for _, formedAtomName := range formedAtomNames {
+		headers = append(headers, fmt.Sprintf("%s - Formed count", formedAtomName))
 	}
 
 	elementOrder := make([]string, 0, len(elements))
@@ -109,15 +109,15 @@ func NewInfoCollector(fileName string, floatPrecision int, elements []configs.El
 	}
 
 	collector := &InfoCollector{
-		fileName:       fileName,
-		floatPrecision: floatPrecision,
-		workbook:       file,
-		sheet:          sh,
-		output:         output,
-		Info:           info,
-		TotalInfo:      InfoWithCombinedAtoms{},
-		elementOrder:   elementOrder,
-		combinedAtom:   combinedAtom,
+		fileName:        fileName,
+		floatPrecision:  floatPrecision,
+		workbook:        file,
+		sheet:           sh,
+		output:          output,
+		Info:            info,
+		TotalInfo:       InfoWithCombinedAtoms{FormedAtoms: make(map[string]int)},
+		elementOrder:    elementOrder,
+		formedAtomOrder: formedAtomNames,
 	}
 
 	if err = collector.Flush(); err != nil {
@@ -145,8 +145,8 @@ func (i *InfoCollector) WriteInfo() error {
 	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombEr, i.floatPrecision))
 	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombLhF, i.floatPrecision))
 	row.AddCell().SetFloat(roundToDecimals(i.TotalInfo.RecombLhS, i.floatPrecision))
-	if i.combinedAtom != nil {
-		row.AddCell().SetInt(i.TotalInfo.CombinedAtomsOnSurface)
+	for _, formedAtomName := range i.formedAtomOrder {
+		row.AddCell().SetInt(i.TotalInfo.FormedAtoms[formedAtomName])
 	}
 
 	if len(i.elementOrder) < 2 {

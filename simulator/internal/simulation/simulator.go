@@ -27,6 +27,7 @@ type Simulator struct {
 	currentSimulationTime float64
 	meta                  map[string]SimulationMeta
 	elems                 []string
+	elementsByName        map[string]configs.Element
 	graphicPlotter        *graphic_plotter.GraphicPlotter
 
 	// [elementName][parameterName]Values
@@ -53,19 +54,15 @@ func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) (
 	atomsController := NewSurfaceAtomsController(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY, matrix, cfg.Elements)
 
 	var (
-		meta         = make(map[string]SimulationMeta)
-		elems        = make([]string, 0, len(cfg.Elements))
-		combinedAtom *string
+		meta           = make(map[string]SimulationMeta)
+		elems          = make([]string, 0, len(cfg.Elements))
+		elementsByName = make(map[string]configs.Element, len(cfg.Elements))
 	)
 
 	for _, element := range cfg.Elements {
 		meta[element.Name] = Fill(element, cfg.Constants, float64(temperature))
 		elems = append(elems, element.Name)
-	}
-
-	if len(elems) > 1 {
-		combinedName := GetCombinedAtomName(cfg.Elements)
-		combinedAtom = &combinedName
+		elementsByName[element.Name] = element
 	}
 
 	startTime := time.Now().Format("2006-01-02 15_04_05")
@@ -80,7 +77,7 @@ func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) (
 		filepath.Join(dirName, excelFileName),
 		cfg.Simulating.FloatPrecision,
 		cfg.Elements,
-		combinedAtom,
+		GetFormedAtomNames(cfg.Elements),
 	)
 	if err != nil {
 		return nil, err
@@ -103,6 +100,7 @@ func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) (
 		graphicPlotter:        graphicPlotter,
 		meta:                  meta,
 		elems:                 elems,
+		elementsByName:        elementsByName,
 		elementValues:         make(map[string]map[string]*Values),
 		stableIterationsCount: 0,
 	}, nil
@@ -111,7 +109,10 @@ func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) (
 func GetCombinedAtomName(elements []configs.Element) string {
 	sortedElements := slices.Clone(elements)
 	slices.SortFunc(sortedElements, func(a, b configs.Element) int {
-		return cmp.Compare(a.Sort, b.Sort)
+		if result := cmp.Compare(a.Electronegativity, b.Electronegativity); result != 0 {
+			return result
+		}
+		return cmp.Compare(a.Name, b.Name)
 	})
 
 	names := make([]string, len(sortedElements))
@@ -120,6 +121,44 @@ func GetCombinedAtomName(elements []configs.Element) string {
 	}
 
 	return strings.Join(names, "")
+}
+
+func GetFormedAtomName(first, second configs.Element) string {
+	if first.Name == second.Name {
+		return fmt.Sprintf("%s2", first.Name)
+	}
+	return GetCombinedAtomName([]configs.Element{first, second})
+}
+
+func GetFormedAtomNames(elements []configs.Element) []string {
+	if len(elements) == 0 {
+		return nil
+	}
+
+	names := make([]string, 0, len(elements)*len(elements))
+	seen := make(map[string]struct{})
+
+	if len(elements) > 1 {
+		for i := 0; i < len(elements); i++ {
+			for j := i + 1; j < len(elements); j++ {
+				name := GetFormedAtomName(elements[i], elements[j])
+				if _, exists := seen[name]; !exists {
+					names = append(names, name)
+					seen[name] = struct{}{}
+				}
+			}
+		}
+	}
+
+	for _, element := range elements {
+		name := GetFormedAtomName(element, element)
+		if _, exists := seen[name]; !exists {
+			names = append(names, name)
+			seen[name] = struct{}{}
+		}
+	}
+
+	return names
 }
 
 // Simulate - function that simulates the processes of adsorption, diffusion, recombination, and desorption of atoms on a surface.
@@ -203,7 +242,12 @@ func (s *Simulator) Simulate() (err error) {
 
 func (s *Simulator) writeInfoSnapshot() error {
 	s.infoCollector.ElapsedTime = s.currentSimulationTime
-	total := InfoWithCombinedAtoms{}
+	total := InfoWithCombinedAtoms{
+		FormedAtoms: make(map[string]int, len(s.infoCollector.TotalInfo.FormedAtoms)),
+	}
+	for formedAtomName, count := range s.infoCollector.TotalInfo.FormedAtoms {
+		total.FormedAtoms[formedAtomName] = count
+	}
 
 	for elementName := range s.meta {
 		info := s.infoCollector.Info[elementName]
@@ -225,8 +269,6 @@ func (s *Simulator) writeInfoSnapshot() error {
 	total.Density = float64(len(s.atomsController.AtomsOnSurface)) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
 	total.DensityF = float64(s.atomsController.AtomsOnFCenters.Len()) / (float64(s.matrix.NumOfFSites))
 	total.DensityS = float64(s.atomsController.AtomsOnSCenters.Len()) / (float64(s.matrix.NumOfSSites))
-	total.CombinedAtomsOnSurface = s.infoCollector.TotalInfo.CombinedAtomsOnSurface
-
 	s.infoCollector.TotalInfo = total
 
 	return s.infoCollector.WriteInfo()
@@ -360,9 +402,7 @@ func (s *Simulator) recombEr(elementName string) {
 	randomElementInfo.RecombEr += 1
 	s.infoCollector.Info[randomElement] = randomElementInfo
 
-	if elementName != randomElement {
-		s.infoCollector.TotalInfo.CombinedAtomsOnSurface++
-	}
+	s.recordFormedAtom(elementName, randomElement)
 	s.desorbAtom('S', randomElement)
 }
 
@@ -396,9 +436,7 @@ func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
 		nextElementInfo.RecombLhS += 1
 		s.infoCollector.Info[nextAtom.ElementName] = nextElementInfo
 
-		if IsDifferentAtoms(elementName, nextAtom.ElementName) {
-			s.infoCollector.TotalInfo.CombinedAtomsOnSurface++
-		}
+		s.recordFormedAtom(elementName, nextAtom.ElementName)
 
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
@@ -413,9 +451,7 @@ func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
 		nextElementInfo.RecombLhF += 1
 		s.infoCollector.Info[nextAtom.ElementName] = nextElementInfo
 
-		if IsDifferentAtoms(elementName, nextAtom.ElementName) {
-			s.infoCollector.TotalInfo.CombinedAtomsOnSurface++
-		}
+		s.recordFormedAtom(elementName, nextAtom.ElementName)
 
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
@@ -430,6 +466,24 @@ func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
 
 func IsDifferentAtoms(a string, b string) bool {
 	return a != b
+}
+
+func (s *Simulator) recordFormedAtom(firstElementName, secondElementName string) {
+	firstElement, firstExists := s.elementsByName[firstElementName]
+	secondElement, secondExists := s.elementsByName[secondElementName]
+	if !firstExists || !secondExists {
+		slog.Warn("formed atom contains unknown element",
+			"first_element", firstElementName,
+			"second_element", secondElementName)
+		return
+	}
+
+	if s.infoCollector.TotalInfo.FormedAtoms == nil {
+		s.infoCollector.TotalInfo.FormedAtoms = make(map[string]int)
+	}
+
+	formedAtomName := GetFormedAtomName(firstElement, secondElement)
+	s.infoCollector.TotalInfo.FormedAtoms[formedAtomName]++
 }
 
 func (s *Simulator) checkQuasiSteadyState() bool {

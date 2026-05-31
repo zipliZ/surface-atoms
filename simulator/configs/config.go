@@ -32,16 +32,16 @@ type CheckParameter struct {
 }
 
 type Element struct {
-	Name      string  `json:"name"`
-	Mass      float64 `json:"mass"`
-	Edes      float64 `json:"edes"`
-	Edif      float64 `json:"edif"`
-	Vdes      float64 `json:"vdes"`
-	Vdif      float64 `json:"vdif"`
-	Er        float64 `json:"er"`
-	Erlh      float64 `json:"erlh"`
-	AgDensity float64 `json:"agDensity"`
-	Sort      uint8   `json:"sort"`
+	Name              string  `json:"name"`
+	Mass              float64 `json:"mass"`
+	Edes              float64 `json:"edes"`
+	Edif              float64 `json:"edif"`
+	Vdes              float64 `json:"vdes"`
+	Vdif              float64 `json:"vdif"`
+	Er                float64 `json:"er"`
+	Erlh              float64 `json:"erlh"`
+	AgDensity         float64 `json:"agDensity"`
+	Electronegativity float64 `json:"electronegativity"`
 }
 
 type GraphicToPlot struct {
@@ -57,7 +57,7 @@ type Constants struct {
 func New() (Config, error) {
 	k := koanf.New(".")
 
-	if err := k.Load(file.Provider("./config.yaml"), yaml.Parser()); err != nil {
+	if err := k.Load(file.Provider("./../config.yaml"), yaml.Parser()); err != nil {
 		return Config{}, err
 	}
 

@@ -46,23 +46,23 @@ consts:
 
 elements:
   - name: "N"
-    mass: 14
-    edes: 51000
-    edif: 25500
-    vdes: 1e+15
-    vdif: 1e+13
+    mass: 14.007
+    edes: 50000
+    edif: 25000
     er: 14000
     erlh: 0
-    agDensity: 8e+14
-    sort: 1
+    vdes: 1.0e+13
+    vdif: 1.0e+12
+    agDensity: 8.0e+14
+    electronegativity: 3.04
 
   - name: "O"
-    mass: 16.00
-    edes: 55000
-    edif: 27500
-    vdes: 1e+13
-    vdif: 1e+11
+    mass: 15.999
+    edes: 60000
+    edif: 30000
     er: 16000
     erlh: 2000
-    agDensity: 2e+14
-    sort: 2
+    vdes: 1.0e+13
+    vdif: 1.0e+12
+    agDensity: 4.0e+14
+    electronegativity: 3.44
