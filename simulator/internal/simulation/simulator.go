@@ -4,12 +4,13 @@ import (
 	"cmp"
 	"container/list"
 	"fmt"
-	"log"
 	"log/slog"
 	"main/configs"
 	"main/internal/graphic_plotter"
 	randomx "main/internal/random"
+	"math"
 	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -45,7 +46,7 @@ func NewValues() *Values {
 	}
 }
 
-func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) *Simulator {
+func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) (*Simulator, error) {
 	matrix := NewMatrix(cfg.Constants)
 	matrix.Init(cfg.Simulating.MatrixLenX, cfg.Simulating.MatrixLenY)
 
@@ -71,24 +72,24 @@ func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) *
 	dirName := fmt.Sprintf("result %s T%dK", startTime, temperature)
 	err := os.Mkdir(dirName, 0755)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	excelFileName := fmt.Sprintf("result_%s_T%dK.xlsx", startTime, temperature)
 	infoCollector, err := NewInfoCollector(
-		dirName+string(os.PathSeparator)+excelFileName,
+		filepath.Join(dirName, excelFileName),
 		cfg.Simulating.FloatPrecision,
 		cfg.Elements,
 		combinedAtom,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	graphicsFileName := fmt.Sprintf("result_%s_T%dK.html", startTime, temperature)
 	graphicPlotter := graphic_plotter.New(
-		dirName+string(os.PathSeparator)+excelFileName,
-		dirName+string(os.PathSeparator)+graphicsFileName,
+		filepath.Join(dirName, excelFileName),
+		filepath.Join(dirName, graphicsFileName),
 		fmt.Sprintf("T%dK", temperature),
 		cfg.Simulating.GraphicsToPlot)
 
@@ -104,16 +105,17 @@ func NewSimulator(cfg configs.Config, temperature int, simulationTime float64) *
 		elems:                 elems,
 		elementValues:         make(map[string]map[string]*Values),
 		stableIterationsCount: 0,
-	}
+	}, nil
 }
 
 func GetCombinedAtomName(elements []configs.Element) string {
-	slices.SortFunc(elements, func(a, b configs.Element) int {
+	sortedElements := slices.Clone(elements)
+	slices.SortFunc(sortedElements, func(a, b configs.Element) int {
 		return cmp.Compare(a.Sort, b.Sort)
 	})
 
-	names := make([]string, len(elements))
-	for i, element := range elements {
+	names := make([]string, len(sortedElements))
+	for i, element := range sortedElements {
 		names[i] = element.Name
 	}
 
@@ -128,7 +130,13 @@ func GetCombinedAtomName(elements []configs.Element) string {
 // If the process is diffusion, the atom will move to a randomx cell if it is free.
 // Every 10% of the simulation, progress information will be displayed.
 // Additionally, every 10% of the simulation, data will be recorded in an Excel file.
-func (s *Simulator) Simulate() {
+func (s *Simulator) Simulate() (err error) {
+	defer func() {
+		if closeErr := s.infoCollector.Close(); err == nil && closeErr != nil {
+			err = closeErr
+		}
+	}()
+
 	startTime := time.Now()
 
 	progressInterval := s.simulationTime * 0.1
@@ -156,7 +164,7 @@ func (s *Simulator) Simulate() {
 		case adsorptionFProcess:
 			s.adsorbAtom('F', elementName)
 		case recombErProcess:
-			s.RecombEr(elementName)
+			s.recombEr(elementName)
 		case desorptionFProcess:
 			s.desorbAtom('F', elementName)
 		case diffusionProcess:
@@ -164,33 +172,9 @@ func (s *Simulator) Simulate() {
 		}
 
 		if s.currentSimulationTime >= nextExcelWriteTime {
-			s.infoCollector.ElapsedTime = s.currentSimulationTime
-			total := InfoWithCombinedAtoms{}
-
-			for elementName = range s.meta {
-				info := s.infoCollector.Info[elementName]
-				info.AtomsOnSurface = s.atomsController.AtomsOnFCenters[elementName].Len() + s.atomsController.AtomsOnSCenters[elementName].Len()
-				info.Density = float64(info.AtomsOnSurface) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
-				info.DensityF = float64(s.atomsController.AtomsOnFCenters[elementName].Len()) / (float64(s.matrix.NumOfFSites))
-				info.DensityS = float64(s.atomsController.AtomsOnSCenters[elementName].Len()) / (float64(s.matrix.NumOfSSites))
-
-				s.infoCollector.Info[elementName] = info
-
-				total.AtomsOnSurface += info.AtomsOnSurface
-				total.AdsorbedAtoms += info.AdsorbedAtoms
-				total.DesorbedAtoms += info.DesorbedAtoms
-				total.RecombEr += info.RecombEr
-				total.RecombLhF += info.RecombLhF
-				total.RecombLhS += info.RecombLhS
+			if err = s.writeInfoSnapshot(); err != nil {
+				return err
 			}
-
-			total.Density = float64(len(s.atomsController.AtomsOnSurface)) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
-			total.DensityF = float64(s.atomsController.AtomsOnFCenters.Len()) / (float64(s.matrix.NumOfFSites))
-			total.DensityS = float64(s.atomsController.AtomsOnSCenters.Len()) / (float64(s.matrix.NumOfSSites))
-			total.CombinedAtomsOnSurface = s.infoCollector.TotalInfo.CombinedAtomsOnSurface
-
-			s.infoCollector.TotalInfo = total
-			s.infoCollector.WriteInfo()
 
 			if s.checkQuasiSteadyState() {
 				slog.Info("Quasi-steady state reached",
@@ -205,10 +189,47 @@ func (s *Simulator) Simulate() {
 		}
 	}
 
-	err := s.graphicPlotter.Plot()
-	if err != nil {
-		slog.Error("plot error", "err", err)
+	if err = s.infoCollector.Close(); err != nil {
+		return err
 	}
+
+	if err = s.graphicPlotter.Plot(); err != nil {
+		slog.Error("plot error", "err", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *Simulator) writeInfoSnapshot() error {
+	s.infoCollector.ElapsedTime = s.currentSimulationTime
+	total := InfoWithCombinedAtoms{}
+
+	for elementName := range s.meta {
+		info := s.infoCollector.Info[elementName]
+		info.AtomsOnSurface = s.atomsController.AtomsOnFCenters[elementName].Len() + s.atomsController.AtomsOnSCenters[elementName].Len()
+		info.Density = float64(info.AtomsOnSurface) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
+		info.DensityF = float64(s.atomsController.AtomsOnFCenters[elementName].Len()) / (float64(s.matrix.NumOfFSites))
+		info.DensityS = float64(s.atomsController.AtomsOnSCenters[elementName].Len()) / (float64(s.matrix.NumOfSSites))
+
+		s.infoCollector.Info[elementName] = info
+
+		total.AtomsOnSurface += info.AtomsOnSurface
+		total.AdsorbedAtoms += info.AdsorbedAtoms
+		total.DesorbedAtoms += info.DesorbedAtoms
+		total.RecombEr += info.RecombEr
+		total.RecombLhF += info.RecombLhF
+		total.RecombLhS += info.RecombLhS
+	}
+
+	total.Density = float64(len(s.atomsController.AtomsOnSurface)) / (float64(s.atomsController.MatrixLimitX) * float64(s.atomsController.MatrixLimitY))
+	total.DensityF = float64(s.atomsController.AtomsOnFCenters.Len()) / (float64(s.matrix.NumOfFSites))
+	total.DensityS = float64(s.atomsController.AtomsOnSCenters.Len()) / (float64(s.matrix.NumOfSSites))
+	total.CombinedAtomsOnSurface = s.infoCollector.TotalInfo.CombinedAtomsOnSurface
+
+	s.infoCollector.TotalInfo = total
+
+	return s.infoCollector.WriteInfo()
 }
 
 const (
@@ -328,7 +349,7 @@ func (s *Simulator) desorbAtom(center rune, elementName string) {
 	s.atomsController.RemoveAtomFromSurface(atom.Id)
 }
 
-func (s *Simulator) RecombEr(elementName string) {
+func (s *Simulator) recombEr(elementName string) {
 	info := s.infoCollector.Info[elementName]
 	info.RecombEr += 1
 	info.DesorbedAtoms += 1
@@ -414,6 +435,74 @@ func IsDifferentAtoms(a string, b string) bool {
 func (s *Simulator) checkQuasiSteadyState() bool {
 	if !s.cfg.Simulating.StopOnQuasiSteady || len(s.cfg.Simulating.CheckParameters) == 0 {
 		return false
+	}
+
+	isStable := true
+	for elementName := range s.meta {
+		info := s.infoCollector.Info[elementName]
+
+		if s.elementValues[elementName] == nil {
+			s.elementValues[elementName] = make(map[string]*Values)
+		}
+
+		for _, param := range s.cfg.Simulating.CheckParameters {
+			var currentValue float64
+
+			switch param.Name {
+			case "density":
+				currentValue = info.Density
+			case "densityF":
+				currentValue = info.DensityF
+			case "densityS":
+				currentValue = info.DensityS
+			case "atomsOnSurface":
+				currentValue = float64(info.AtomsOnSurface)
+			default:
+				slog.Warn("unknown parameter for quasi-steady check", "parameter", param)
+				continue
+			}
+
+			values, exists := s.elementValues[elementName][param.Name]
+			if !exists {
+				s.elementValues[elementName][param.Name] = NewValues()
+				isStable = false
+				continue
+			}
+
+			var relativeChange float64
+			if values.Values.Len() == param.ValuesWindowSize {
+				meanValue := values.Total / float64(values.Values.Len())
+				relativeChange = math.Abs((currentValue - meanValue) / meanValue)
+
+				// Remove oldest value
+				oldestElement := values.Values.Back()
+				if oldestElement != nil {
+					oldestValue := oldestElement.Value.(float64)
+					values.Total -= oldestValue
+					values.Values.Remove(oldestElement)
+				}
+				values.Values.PushFront(currentValue)
+				values.Total += currentValue
+				s.elementValues[elementName][param.Name] = values
+
+			} else {
+				relativeChange = 1.0
+				values.Values.PushFront(currentValue)
+				values.Total += currentValue
+				s.elementValues[elementName][param.Name] = values
+			}
+
+			if relativeChange > param.Tolerance/100.0 {
+				isStable = false
+			}
+
+		}
+	}
+
+	if isStable {
+		s.stableIterationsCount++
+	} else {
+		s.stableIterationsCount = 0
 	}
 
 	return s.stableIterationsCount >= s.cfg.Simulating.RequiredStableChecks

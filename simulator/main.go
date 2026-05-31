@@ -50,8 +50,13 @@ func main() {
 		fmt.Scanln(&simulationTime)
 	}
 
-	simulator := simulation.NewSimulator(cfg, temperature, simulationTime)
-	simulator.Simulate()
+	simulator, err := simulation.NewSimulator(cfg, temperature, simulationTime)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err = simulator.Simulate(); err != nil {
+		log.Fatal(err)
+	}
 
 	if len(args) != 3 {
 		// Wait for Enter key press before exiting

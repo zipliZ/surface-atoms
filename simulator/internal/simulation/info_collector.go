@@ -2,9 +2,9 @@ package simulation
 
 import (
 	"fmt"
-	"log"
 	"main/configs"
 	"math"
+	"os"
 
 	"github.com/tealeg/xlsx"
 )
@@ -13,6 +13,10 @@ import (
 type InfoCollector struct {
 	fileName       string
 	floatPrecision int
+	workbook       *xlsx.File
+	sheet          *xlsx.Sheet
+	output         *os.File
+	closed         bool
 	Info           map[string]Info
 	elementOrder   []string
 	combinedAtom   *string
@@ -94,8 +98,8 @@ func NewInfoCollector(fileName string, floatPrecision int, elements []configs.El
 		row.AddCell().SetFloat(0)
 	}
 
-	// Save the file to filePath
-	if err = file.Save(fileName); err != nil {
+	output, err := os.Create(fileName)
+	if err != nil {
 		return nil, err
 	}
 
@@ -104,24 +108,29 @@ func NewInfoCollector(fileName string, floatPrecision int, elements []configs.El
 		info[element.Name] = Info{}
 	}
 
-	return &InfoCollector{
+	collector := &InfoCollector{
 		fileName:       fileName,
 		floatPrecision: floatPrecision,
+		workbook:       file,
+		sheet:          sh,
+		output:         output,
 		Info:           info,
 		TotalInfo:      InfoWithCombinedAtoms{},
 		elementOrder:   elementOrder,
 		combinedAtom:   combinedAtom,
-	}, nil
+	}
+
+	if err = collector.Flush(); err != nil {
+		_ = output.Close()
+		return nil, err
+	}
+
+	return collector, nil
 }
 
 // WriteInfo collects information about the simulation progress.
-func (i *InfoCollector) WriteInfo() {
-	file, err := xlsx.OpenFile(i.fileName)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	row := file.Sheet["Sheet1"].AddRow()
+func (i *InfoCollector) WriteInfo() error {
+	row := i.sheet.AddRow()
 
 	// Write common info (step and time)
 	row.AddCell().SetFloat(roundToDecimals(i.ElapsedTime, i.floatPrecision))
@@ -141,10 +150,7 @@ func (i *InfoCollector) WriteInfo() {
 	}
 
 	if len(i.elementOrder) < 2 {
-		if err = file.Save(i.fileName); err != nil {
-			log.Fatal(err)
-		}
-		return
+		return i.Flush()
 	}
 
 	// Write element-specific info
@@ -161,9 +167,39 @@ func (i *InfoCollector) WriteInfo() {
 		row.AddCell().SetFloat(roundToDecimals(info.RecombLhS, i.floatPrecision))
 	}
 
-	if err = file.Save(i.fileName); err != nil {
-		log.Fatal(err)
+	return i.Flush()
+}
+
+func (i *InfoCollector) Flush() error {
+	if i.closed {
+		return nil
 	}
+
+	if _, err := i.output.Seek(0, 0); err != nil {
+		return err
+	}
+	if err := i.output.Truncate(0); err != nil {
+		return err
+	}
+	if err := i.workbook.Write(i.output); err != nil {
+		return err
+	}
+
+	return i.output.Sync()
+}
+
+func (i *InfoCollector) Close() error {
+	if i.closed {
+		return nil
+	}
+
+	err := i.Flush()
+	closeErr := i.output.Close()
+	i.closed = true
+	if err != nil {
+		return err
+	}
+	return closeErr
 }
 
 func roundToDecimals(value float64, precision int) float64 {
