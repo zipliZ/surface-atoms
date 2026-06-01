@@ -2,7 +2,6 @@ simulating:
   logPercent: 0.1
   matrixLenX: 1000
   matrixLenY: 1000
-  allowTimeProgressInIdle: true
   floatPrecision: 8
   graphicsToPlot:
     [
@@ -10,16 +9,60 @@ simulating:
       { xAxis: "Simulation time", yAxis: "Density F" },
       { xAxis: "Simulation time", yAxis: "Density S" },
     ]
+  #  Включена ли остановка при достижении квази-стационарного состояния
+  "stopOnQuasiSteady": true
+  # Количество последовательных проверок на квази-стационарность, необходимых для остановки симуляции
+  "requiredStableChecks": 10
+  "checkParameters": [
+    {
+      #      Название поля по которому смотреть изменения
+      "name": "densityF" ,
+      #      Процент отклонения
+      "tolerance": 2,
+      #      Размер окна в котором хранить последние значения
+      "valuesWindowSize": 100,
+    },
+    #    {
+    #      "name": "densityS" ,
+    #      "tolerance": 1,
+    #      "valuesWindowSize": 100,
+    #    },
+    #    {
+    #      "name": "density" ,
+    #      "tolerance": 1,
+    #      "valuesWindowSize": 100,
+    #    },
+    #    {
+    #      "name": "atomsOnSurface" ,
+    #      "tolerance": 0.1,
+    #      "valuesWindowSize": 100,
+    #    },
+  ]
 
 consts:
-  mass: 14
-  edes: 51000
-  edif: 25500
-  vdes: 1e+15
-  vdif: 1e+13
-  er: 14000
-  erlh: 0
   fDensity: 1.5e+15
   fi: 0.002
   sDensity: 3e+12
-  agDensity: 1e+15
+
+elements:
+  - name: "N"
+    mass: 14.007
+    edes: 50000
+    edif: 25000
+    er: 14000
+    erlh: 0
+    vdes: 1.0e+13
+    vdif: 1.0e+12
+    agDensity: 8.0e+14
+    electronegativity: 3.04
+
+  - name: "O"
+    mass: 15.999
+    edes: 60000
+    edif: 30000
+    er: 16000
+    erlh: 2000
+    vdes: 1.0e+13
+    vdif: 1.0e+12
+    agDensity: 4.0e+14
+    electronegativity: 3.44

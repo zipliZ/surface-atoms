@@ -106,7 +106,7 @@ linters-settings:
         alias: healthcheck
       - pkg: git.devolta.ru/involta-go-packages/message-queue(/v[\w\d]+)?
         alias: message_queue
-      - pkg: git.devolta.ru/involta-go-packages/message-queue(/v[\w\d]+)?/config
+      - pkg: git.devolta.ru/involta-go-packages/message-queue(/v[\w\d]+)?/configs
         alias: message_queue_config
       - pkg: git.devolta.ru/involta-go-packages/middleware(/v[\w\d]+)?
         alias: middleware
@@ -126,9 +126,9 @@ linters-settings:
         alias: products_tags
       - pkg: git.devolta.ru/involta-go-packages/reindexer(/v[\w\d]+)?
         alias: reindexerx
-      - pkg: git.devolta.ru/involta-go-packages/remote-config(/v[\w\d]+)?
+      - pkg: git.devolta.ru/involta-go-packages/remote-configs(/v[\w\d]+)?
         alias: remote_config
-      - pkg: git.devolta.ru/involta-go-packages/remote-config(/v[\w\d]+)?/micro_config
+      - pkg: git.devolta.ru/involta-go-packages/remote-configs(/v[\w\d]+)?/micro_config
         alias: micro_config
       - pkg: git.devolta.ru/involta-go-packages/roles(/v[\w\d]+)?
         alias: roles

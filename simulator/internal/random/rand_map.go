@@ -1,4 +1,4 @@
-package internal
+package random
 
 import (
 	"crypto/rand"
@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-type RandMap[K comparable, V any] struct {
+type Map[K comparable, V any] struct {
 	m sync.RWMutex
 
 	// Where the objects you care about are stored.
@@ -21,14 +21,14 @@ type RandMap[K comparable, V any] struct {
 	sliceKeyIndex map[K]int
 }
 
-func NewRandMap[K comparable, V any]() *RandMap[K, V] {
-	return &RandMap[K, V]{
+func NewRandMap[K comparable, V any]() *Map[K, V] {
+	return &Map[K, V]{
 		container:     make(map[K]V),
 		sliceKeyIndex: make(map[K]int),
 	}
 }
 
-func (s *RandMap[K, V]) Add(key K, item V) {
+func (s *Map[K, V]) Add(key K, item V) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
@@ -43,7 +43,7 @@ func (s *RandMap[K, V]) Add(key K, item V) {
 	s.sliceKeyIndex[key] = index
 }
 
-func (s *RandMap[K, V]) Get(key K) (val V, ok bool) {
+func (s *Map[K, V]) Get(key K) (val V, ok bool) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 
@@ -55,7 +55,7 @@ func (s *RandMap[K, V]) Get(key K) (val V, ok bool) {
 	return item, true
 }
 
-func (s *RandMap[K, V]) Remove(key K) {
+func (s *Map[K, V]) Remove(key K) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
@@ -63,7 +63,7 @@ func (s *RandMap[K, V]) Remove(key K) {
 }
 
 // caller is responsible for locking
-func (s *RandMap[K, V]) remove(key K) {
+func (s *Map[K, V]) remove(key K) {
 	// get index in key slice for key
 	index, exists := s.sliceKeyIndex[key]
 	if !exists {
@@ -90,7 +90,7 @@ func (s *RandMap[K, V]) remove(key K) {
 	delete(s.container, key)
 }
 
-func (s *RandMap[K, V]) Random() (key K, val V, ok bool) {
+func (s *Map[K, V]) Random() (key K, val V, ok bool) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 
@@ -106,7 +106,7 @@ func (s *RandMap[K, V]) Random() (key K, val V, ok bool) {
 	return key, item, true
 }
 
-func (s *RandMap[K, V]) PopRandom() (val V, ok bool) {
+func (s *Map[K, V]) PopRandom() (val V, ok bool) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
@@ -127,7 +127,7 @@ func (s *RandMap[K, V]) PopRandom() (val V, ok bool) {
 	return item, true
 }
 
-func (s *RandMap[K, V]) Len() int {
+func (s *Map[K, V]) Len() int {
 	s.m.RLock()
 	defer s.m.RUnlock()
 

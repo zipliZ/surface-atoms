@@ -1,10 +1,10 @@
-package internal
+package graphic_plotter
 
 import (
 	"fmt"
 	"io"
 	"log/slog"
-	"main/internal/config"
+	"main/configs"
 	"os"
 	"strconv"
 
@@ -19,10 +19,10 @@ type GraphicPlotter struct {
 	ExelFilePath   string
 	OutputFilePath string
 	LineLabel      string
-	GraphicsToPlot []config.GraphicToPlot
+	GraphicsToPlot []configs.GraphicToPlot
 }
 
-func NewGraphicPlotter(exelFilePath string, outputFilePath string, lineLabel string, graphicsToPlot []config.GraphicToPlot) *GraphicPlotter {
+func New(exelFilePath string, outputFilePath string, lineLabel string, graphicsToPlot []configs.GraphicToPlot) *GraphicPlotter {
 	return &GraphicPlotter{
 		ExelFilePath:   exelFilePath,
 		OutputFilePath: outputFilePath,
@@ -89,8 +89,19 @@ func (p *GraphicPlotter) readExcel() (columnValues map[string][]float64, err err
 
 	columnsIndexes := make(map[int]string)
 	for i, header := range rows[0] {
-		if _, ok := requiredColumns[header]; ok {
-			columnsIndexes[i] = header
+		// check if this header matches any xAxis exactly
+		for _, graphicAxis := range p.GraphicsToPlot {
+			if header == graphicAxis.XAxis {
+				columnsIndexes[i] = header
+				break
+			}
+		}
+		// check if this header matches any yAxis (exact or suffix)
+		for _, graphicAxis := range p.GraphicsToPlot {
+			if header == graphicAxis.YAxis || (len(header) > len(graphicAxis.YAxis) && header[len(header)-len(graphicAxis.YAxis):] == graphicAxis.YAxis) {
+				columnsIndexes[i] = header
+				break
+			}
 		}
 	}
 
@@ -118,7 +129,7 @@ func generateLineItems(yValues []float64) []opts.LineData {
 func (p *GraphicPlotter) plotGraph(columnValues map[string][]float64, xName, yName string) (*charts.Line, error) {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
-		charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeEssos, PageTitle: "Surface Atoms", Width: "1200px"}),
+		charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeInfographic, PageTitle: "Surface Atoms", Width: "1200px"}),
 		charts.WithTitleOpts(opts.Title{
 			Title: fmt.Sprintf("%s/%s", yName, xName),
 		}), charts.WithYAxisOpts(opts.YAxis{
@@ -136,12 +147,19 @@ func (p *GraphicPlotter) plotGraph(columnValues map[string][]float64, xName, yNa
 			End:        100,
 			XAxisIndex: []int{0},
 		}),
+		charts.WithTooltipOpts(opts.Tooltip{Show: opts.Bool(true), Trigger: "axis"}),
+		charts.WithLegendOpts(opts.Legend{Show: opts.Bool(true)}),
 	)
 
-	// Put data into instance
-	line.SetXAxis(columnValues[xName]).
-		AddSeries(p.LineLabel, generateLineItems(columnValues[yName])).
-		SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: opts.Bool(true)}))
+	line.SetXAxis(columnValues[xName])
+
+	for colName, values := range columnValues {
+		if colName == yName || (len(colName) > len(yName) && colName[len(colName)-len(yName):] == yName) {
+			seriesName := colName
+			line.AddSeries(seriesName, generateLineItems(values)).
+				SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: opts.Bool(true)}))
+		}
+	}
 
 	return line, nil
 }
