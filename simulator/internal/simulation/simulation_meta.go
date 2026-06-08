@@ -6,16 +6,18 @@ import (
 )
 
 type SimulationMeta struct {
-	atomFlux                        float64
-	r1                              float64
-	r2                              float64
-	r3                              float64
-	r4                              float64
-	r5                              float64
-	r6                              float64
-	r7                              float64
-	recombinationProbabilityOnSSite float64
-	recombinationProbabilityOnFSite float64
+	atomFlux                           float64
+	r1                                 float64
+	r2                                 float64
+	r3                                 float64
+	r4                                 float64
+	r5                                 float64
+	r6                                 float64
+	r7                                 float64
+	recombinationProbabilityOnSSite    float64
+	recombinationProbabilityOnFSite    float64
+	recombinationProbabilityOnSSiteHet float64
+	recombinationProbabilityOnFSiteHet float64
 }
 
 func Fill(element configs.Element, constants configs.Constants, temperature float64) SimulationMeta {
@@ -30,6 +32,8 @@ func Fill(element configs.Element, constants configs.Constants, temperature floa
 
 	recombinationProbabilityOnSSite := calcRecombinationProbabilityOnSSite(element, temperature)
 	recombinationProbabilityOnFSite := calcRecombinationProbabilityOnFSite(element, temperature)
+	recombinationProbabilityOnSSiteHet := calcRecombinationProbabilityOnSSiteHet(element, temperature)
+	recombinationProbabilityOnFSiteHet := calcRecombinationProbabilityOnFSiteHet(element, temperature)
 
 	return SimulationMeta{
 		atomFlux: atomFlux,
@@ -41,8 +45,10 @@ func Fill(element configs.Element, constants configs.Constants, temperature floa
 		r6:       r6,
 		r7:       r7,
 
-		recombinationProbabilityOnSSite: recombinationProbabilityOnSSite,
-		recombinationProbabilityOnFSite: recombinationProbabilityOnFSite,
+		recombinationProbabilityOnSSite:    recombinationProbabilityOnSSite,
+		recombinationProbabilityOnFSite:    recombinationProbabilityOnFSite,
+		recombinationProbabilityOnSSiteHet: recombinationProbabilityOnSSiteHet,
+		recombinationProbabilityOnFSiteHet: recombinationProbabilityOnFSiteHet,
 	}
 }
 
@@ -85,15 +91,22 @@ func calcR6(element configs.Element, temperature float64, r5 float64) float64 {
 }
 
 func calcR7(element configs.Element, temperature float64, r5 float64) float64 {
-	r7 := math.Exp(-element.Erlh/(8.31*temperature)) * r5
+	r7 := math.Exp(-element.ErlhF/(8.31*temperature)) * r5
 	return r7
 }
 
-// TODO: для разных элементов добавить
 func calcRecombinationProbabilityOnSSite(element configs.Element, temperature float64) float64 {
-	return math.Exp(-element.Er / (8.31 * float64(temperature)))
+	return math.Exp(-element.ErlhS / (8.31 * float64(temperature)))
 }
 
 func calcRecombinationProbabilityOnFSite(element configs.Element, temperature float64) float64 {
-	return math.Exp(-element.Erlh / (8.31 * float64(temperature)))
+	return math.Exp(-element.ErlhF / (8.31 * float64(temperature)))
+}
+
+func calcRecombinationProbabilityOnSSiteHet(element configs.Element, temperature float64) float64 {
+	return math.Exp(-element.ErlhSHet / (8.31 * float64(temperature)))
+}
+
+func calcRecombinationProbabilityOnFSiteHet(element configs.Element, temperature float64) float64 {
+	return math.Exp(-element.ErlhFHet / (8.31 * float64(temperature)))
 }

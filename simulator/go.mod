@@ -1,6 +1,6 @@
 module main
 
-go 1.23.0
+go 1.26.4
 
 require (
 	github.com/go-echarts/go-echarts/v2 v2.5.1

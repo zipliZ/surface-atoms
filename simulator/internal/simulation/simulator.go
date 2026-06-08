@@ -425,7 +425,7 @@ func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
 	switch {
 	case nextCellInfo.IsFree:
 		s.atomsController.MoveAtom(atom, nextCellInfo)
-	case nextCellInfo.Center == 'S' && meta.recombinationProbabilityOnSSite >= randomx.Float64():
+	case nextCellInfo.Center == 'S' && recombProbOnS(elementName, s.atomsController.AtomsOnSurface[nextCellInfo.AtomId].ElementName, meta) >= randomx.Float64():
 		info.DesorbedAtoms += 1
 		info.RecombLhS += 1
 		s.infoCollector.Info[elementName] = info
@@ -440,7 +440,7 @@ func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
 
 		s.atomsController.RemoveAtomFromSurface(atom.Id)
 		s.atomsController.RemoveAtomFromSurface(nextCellInfo.AtomId)
-	case nextCellInfo.Center == 'F' && meta.recombinationProbabilityOnFSite >= randomx.Float64():
+	case nextCellInfo.Center == 'F' && recombProbOnF(elementName, s.atomsController.AtomsOnSurface[nextCellInfo.AtomId].ElementName, meta) >= randomx.Float64():
 		info.DesorbedAtoms += 1
 		info.RecombLhF += 1
 		s.infoCollector.Info[elementName] = info
@@ -466,6 +466,20 @@ func (s *Simulator) moveRandomAtom(elementName string, meta SimulationMeta) {
 
 func IsDifferentAtoms(a string, b string) bool {
 	return a != b
+}
+
+func recombProbOnS(elementName, nextElementName string, meta SimulationMeta) float64 {
+	if IsDifferentAtoms(elementName, nextElementName) {
+		return meta.recombinationProbabilityOnSSiteHet
+	}
+	return meta.recombinationProbabilityOnSSite
+}
+
+func recombProbOnF(elementName, nextElementName string, meta SimulationMeta) float64 {
+	if IsDifferentAtoms(elementName, nextElementName) {
+		return meta.recombinationProbabilityOnFSiteHet
+	}
+	return meta.recombinationProbabilityOnFSite
 }
 
 func (s *Simulator) recordFormedAtom(firstElementName, secondElementName string) {
