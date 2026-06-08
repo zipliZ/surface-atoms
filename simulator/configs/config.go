@@ -39,7 +39,10 @@ type Element struct {
 	Vdes              float64 `json:"vdes"`
 	Vdif              float64 `json:"vdif"`
 	Er                float64 `json:"er"`
-	Erlh              float64 `json:"erlh"`
+	ErlhF             float64 `json:"erlhf"`
+	ErlhS             float64 `json:"erlhs"`
+	ErlhFHet          float64 `json:"erlhfhet"`
+	ErlhSHet          float64 `json:"erlhshet"`
 	AgDensity         float64 `json:"agDensity"`
 	Electronegativity float64 `json:"electronegativity"`
 }
