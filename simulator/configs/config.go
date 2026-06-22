@@ -60,7 +60,7 @@ type Constants struct {
 func New() (Config, error) {
 	k := koanf.New(".")
 
-	if err := k.Load(file.Provider("./../config.yaml"), yaml.Parser()); err != nil {
+	if err := k.Load(file.Provider("./config.yaml"), yaml.Parser()); err != nil {
 		return Config{}, err
 	}
 
